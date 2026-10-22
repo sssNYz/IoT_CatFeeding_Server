@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "openapi": "tsx scripts/gen-openapi.ts"
+    "openapi": "tsx scripts/gen-openapi.ts",
+    "mock": "npx -y @stoplight/prism-cli@5 mock openapi.json -h 0.0.0.0 -p 4010"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",

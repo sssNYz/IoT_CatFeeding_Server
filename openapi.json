@@ -959,6 +959,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -969,6 +975,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1005,6 +1023,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1053,6 +1077,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1104,6 +1134,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1114,6 +1150,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1124,6 +1166,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1184,6 +1232,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1194,6 +1248,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1204,6 +1264,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1214,6 +1280,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1264,6 +1342,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1274,6 +1358,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1284,6 +1374,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1342,6 +1438,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1352,6 +1454,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1362,6 +1470,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1372,6 +1486,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1430,6 +1556,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1440,6 +1572,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1450,6 +1588,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1510,6 +1654,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1520,6 +1670,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1530,6 +1686,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1540,6 +1702,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1598,6 +1772,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1608,6 +1788,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1618,6 +1804,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1716,6 +1908,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1726,6 +1924,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1736,6 +1940,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1746,6 +1956,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1820,6 +2042,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1830,6 +2058,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1840,6 +2074,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1887,6 +2127,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1930,6 +2176,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1940,6 +2192,12 @@
             "description": "This RFID tag is already registered",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "conflict",
+                    "message": "RFID tag E200001A is already registered"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -1950,6 +2208,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2011,6 +2281,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2021,6 +2297,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2031,6 +2313,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2088,6 +2376,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2098,6 +2392,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2108,6 +2408,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2118,6 +2424,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2172,6 +2490,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2182,6 +2506,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2192,6 +2522,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2251,6 +2587,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2261,6 +2603,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2320,6 +2674,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2330,6 +2690,12 @@
             "description": "Not found",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "message": "Feeder not found"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2377,6 +2743,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2387,6 +2759,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2503,6 +2881,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2513,6 +2897,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2523,6 +2913,18 @@
             "description": "Validation failed; see error.details",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "portion_g must be between 5 and 100",
+                    "details": [
+                      {
+                        "field": "portion_g",
+                        "message": "Too big: expected <= 100"
+                      }
+                    ]
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2559,6 +2961,12 @@
             "description": "Missing or expired token",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthorized",
+                    "message": "Token missing or expired"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }
@@ -2569,6 +2977,12 @@
             "description": "Not your feeder, or admin only",
             "content": {
               "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "message": "You do not have access to this feeder"
+                  }
+                },
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 }

@@ -9,12 +9,31 @@ const json = (schema: ZodType, description: string) => ({
   content: { "application/json": { schema } },
 });
 
-const err = (description: string) => json(S.ErrorResponse, description);
+const err = (description: string, code: string, message: string) => ({
+  description,
+  content: { "application/json": { schema: S.ErrorResponse, example: { error: { code, message } } } },
+});
 
-const E401 = { 401: err("Missing or expired token") };
-const E403 = { 403: err("Not your feeder, or admin only") };
-const E404 = { 404: err("Not found") };
-const E422 = { 422: err("Validation failed; see error.details") };
+const E401 = { 401: err("Missing or expired token", "unauthorized", "Token missing or expired") };
+const E403 = { 403: err("Not your feeder, or admin only", "forbidden", "You do not have access to this feeder") };
+const E404 = { 404: err("Not found", "not_found", "Feeder not found") };
+const E422 = {
+  422: {
+    description: "Validation failed; see error.details",
+    content: {
+      "application/json": {
+        schema: S.ErrorResponse,
+        example: {
+          error: {
+            code: "validation_error",
+            message: "portion_g must be between 5 and 100",
+            details: [{ field: "portion_g", message: "Too big: expected <= 100" }],
+          },
+        },
+      },
+    },
+  },
+};
 
 const feederParams = z.object({ id: S.FeederId });
 const asUser = [{ [userAuth.name]: [] }];
@@ -198,7 +217,7 @@ registry.registerPath({
   responses: {
     201: json(S.Cat, "Created"),
     ...E401,
-    409: err("This RFID tag is already registered"),
+    409: err("This RFID tag is already registered", "conflict", "RFID tag E200001A is already registered"),
     ...E422,
   },
 });
