@@ -4,6 +4,7 @@ import type { Feeder } from "../contract/schemas";
 import { db, schema } from "../db";
 import { pgToThai } from "../time";
 import type { AuthUser } from "./auth";
+import { ApiError } from "./http";
 
 /** Feeders the user may see (owner: their own; admin: all), each with its status. */
 export async function listFeeders(user: AuthUser): Promise<z.infer<typeof Feeder>[]> {
@@ -30,4 +31,12 @@ export async function listFeeders(user: AuthUser): Promise<z.infer<typeof Feeder
       synced: s?.appliedScheduleVersion === f.scheduleVersion,
     },
   }));
+}
+
+/** The feeder the user may change: 404 if it does not exist, 403 if it belongs to someone else (admins pass). */
+export async function requireFeeder(user: AuthUser, feederId: string) {
+  const [feeder] = await db.select().from(schema.feeders).where(eq(schema.feeders.id, feederId));
+  if (!feeder) throw new ApiError(404, "not_found", `Feeder ${feederId} not found`);
+  if (user.role !== "admin" && feeder.ownerId !== user.id) throw new ApiError(403, "forbidden", "Not your feeder");
+  return feeder;
 }

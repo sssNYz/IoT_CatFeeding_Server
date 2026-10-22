@@ -1,4 +1,5 @@
 import type { ZodType, z } from "zod";
+import mqtt from "mqtt";
 import { expect } from "vitest";
 import { ErrorResponse } from "../lib/contract/schemas";
 
@@ -43,4 +44,24 @@ export async function login(who: "OWNER" | "ADMIN") {
   });
   expect(status).toBe(200);
   return (body as { token: string }).token;
+}
+
+/** The retained message on a topic right now, read with the app's MQTT login (stack must be up). */
+export async function retained(topic: string): Promise<unknown> {
+  const client = await mqtt.connectAsync(process.env.MQTT_TEST_URL ?? "mqtt://localhost:1883", {
+    username: "backend",
+    password: env("MQTT_BACKEND_PASSWORD"),
+  });
+  try {
+    const message = new Promise<unknown>((resolve, reject) => {
+      client.on("message", (t, payload, packet) => {
+        if (t === topic && packet.retain) resolve(JSON.parse(payload.toString()));
+      });
+      setTimeout(() => reject(new Error(`No retained message on ${topic}`)), 3_000).unref();
+    });
+    await client.subscribeAsync(topic, { qos: 1 });
+    return await message;
+  } finally {
+    await client.endAsync();
+  }
 }

@@ -20,5 +20,6 @@ The API is at `http://localhost:3000/api/v1` (contract: `openapi.json`). On firs
 | Mock server for the app (port 4010) | `npm run mock` |
 | Regenerate `openapi.json` | `npm run openapi` |
 | New migration after editing `lib/db/schema.ts` | `npm run db:generate` |
+| Watch the schedule sets the feeders get | `docker compose exec mosquitto sh -c 'mosquitto_sub -u backend -P "$MQTT_BACKEND_PASSWORD" -t "catfeeder/+/schedule/set" -v'` |
 
-`db` and `minio` have no published ports, so database commands run inside the `app` container.
+`db` and `minio` have no published ports, so database commands run inside the `app` container. Mosquitto's 1883 is published on `127.0.0.1` only (tests read the retained schedule set through it); feeders will use 8883 with TLS.

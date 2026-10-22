@@ -30,6 +30,14 @@
     {
       "key": "token",
       "value": ""
+    },
+    {
+      "key": "scheduleId",
+      "value": ""
+    },
+    {
+      "key": "scheduleVersion",
+      "value": ""
     }
   ],
   "item": [
@@ -132,6 +140,168 @@
           ]
         }
       }
+    },
+    {
+      "name": "Schedules",
+      "item": [
+        {
+          "name": "List schedules",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test(\"Thai time zone\", () => pm.expect(res.timezone).to.eql(\"Asia/Bangkok\"));",
+                  "pm.collectionVariables.set(\"scheduleVersion\", res.schedule_version);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "schedules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add a schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test(\"version went up by 1\", () => pm.expect(res.schedule_version).to.eql(Number(pm.collectionVariables.get(\"scheduleVersion\")) + 1));",
+                  "pm.collectionVariables.set(\"scheduleId\", res.schedule.schedule_id);",
+                  "pm.collectionVariables.set(\"scheduleVersion\", res.schedule_version);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "schedules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"time\": \"12:30\",\n  \"portion_g\": 25,\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Edit the schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "const res = pm.response.json();",
+                  "pm.test(\"saved the new time\", () => pm.expect(res.schedule.time).to.eql(\"13:00\"));",
+                  "pm.test(\"version went up by 1\", () => pm.expect(res.schedule_version).to.eql(Number(pm.collectionVariables.get(\"scheduleVersion\")) + 1));",
+                  "pm.collectionVariables.set(\"scheduleVersion\", res.schedule_version);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "schedules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule_id\": \"{{scheduleId}}\",\n  \"time\": \"13:00\",\n  \"portion_g\": 30,\n  \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete the schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"version went up by 1\", () => pm.expect(pm.response.json().schedule_version).to.eql(Number(pm.collectionVariables.get(\"scheduleVersion\")) + 1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/schedules/{{scheduleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "schedules",
+                "{{scheduleId}}"
+              ]
+            }
+          }
+        }
+      ]
     },
     {
       "name": "Errors",
@@ -252,6 +422,152 @@
               ],
               "path": [
                 "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bad schedule time → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"names the time field\", () => pm.expect(pm.response.json().error.details[0].field).to.eql(\"time\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "schedules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"time\": \"7:00\",\n  \"portion_g\": 40\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Portion too big → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"names the portion_g field\", () => pm.expect(pm.response.json().error.details[0].field).to.eql(\"portion_g\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "schedules"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"time\": \"07:00\",\n  \"portion_g\": 101\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Someone else's feeder → 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder02/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder02",
+                "schedules"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Unknown feeder → 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder99/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder99",
+                "schedules"
               ]
             }
           }

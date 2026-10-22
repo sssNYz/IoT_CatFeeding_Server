@@ -1,0 +1,11 @@
+# Topic access (spec Section 5).
+
+# server (Next.js MQTT bridge) account
+user backend
+topic readwrite catfeeder/#
+
+# every feeder: username = device_id
+pattern read  catfeeder/%u/schedule/set
+pattern read  catfeeder/%u/command/feed
+pattern write catfeeder/%u/event/feeding
+pattern write catfeeder/%u/status

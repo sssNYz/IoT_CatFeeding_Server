@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 // Times stay Thai-time strings from the database (spec Section 2): mode "string", never JS Date.
 const thaiTime = (name: string) => timestamp(name, { withTimezone: true, mode: "string" });
@@ -33,3 +33,20 @@ export const deviceStatus = pgTable("device_status", {
   fw: text("fw"),
   appliedScheduleVersion: integer("applied_schedule_version"),
 });
+
+// A feeder's daily feeds. The whole set goes to the feeder on every change (spec Section 9, rule 2).
+export const schedules = pgTable(
+  "schedules",
+  {
+    feederId: text("feeder_id")
+      .notNull()
+      .references(() => feeders.id, { onDelete: "cascade" }),
+    scheduleId: text("schedule_id").notNull(),
+    time: text("time").notNull(), // "HH:MM", Thai time
+    timezone: text("timezone").notNull().default("Asia/Bangkok"),
+    portionG: integer("portion_g").notNull(),
+    soundId: text("sound_id"),
+    enabled: boolean("enabled").notNull().default(true),
+  },
+  (t) => [primaryKey({ columns: [t.feederId, t.scheduleId] })],
+);

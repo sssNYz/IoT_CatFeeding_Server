@@ -1,4 +1,5 @@
 # Every service runs on Thai time (spec Section 2). db and minio have no `ports:`: they stay private.
+# mosquitto 1883 is bound to localhost only.
 x-thai-time: &thai-time
   TZ: Asia/Bangkok
 
@@ -9,6 +10,7 @@ services:
     environment:
       <<: *thai-time
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      MQTT_URL: mqtt://mosquitto:1883
     ports:
       - "3000:3000"
     depends_on:
@@ -40,9 +42,27 @@ services:
 
   mosquitto:
     image: eclipse-mosquitto:2
-    environment: *thai-time
+    # Make the app's login from .env on every start, then run the broker. The password file and a copy of the
+    # mounted ACL are owned by mosquitto with no access for others, as Mosquitto 2.1 expects.
+    command:
+      - sh
+      - -ec
+      - |
+        rm -f /mosquitto/passwd
+        mosquitto_passwd -c -b /mosquitto/passwd backend "$$MQTT_BACKEND_PASSWORD"
+        cp /mosquitto/config/acl /mosquitto/acl
+        chown mosquitto:mosquitto /mosquitto/passwd /mosquitto/acl
+        chmod 0600 /mosquitto/passwd /mosquitto/acl
+        exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf
+    environment:
+      <<: *thai-time
+      MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD}
+    # Localhost only, for tests and debugging on this machine; feeders get 8883 with TLS (ticket 04).
+    ports:
+      - "127.0.0.1:1883:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/config/acl:/mosquitto/config/acl:ro
       - mosquittodata:/mosquitto/data
     restart: unless-stopped
 
