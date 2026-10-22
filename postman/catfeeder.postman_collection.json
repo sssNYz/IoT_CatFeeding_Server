@@ -142,6 +142,38 @@
       }
     },
     {
+      "name": "Feeder status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+              "const s = pm.response.json();",
+              "pm.test(\"state is online, offline or unknown\", () => pm.expect([\"online\", \"offline\", \"unknown\"]).to.include(s.state));",
+              "pm.test(\"synced means the versions match\", () => pm.expect(s.synced).to.eql(s.applied_schedule_version === s.schedule_version));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/feeders/feeder01/status",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "feeders",
+            "feeder01",
+            "status"
+          ]
+        }
+      }
+    },
+    {
       "name": "Schedules",
       "item": [
         {

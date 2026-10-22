@@ -13,6 +13,7 @@
     "test": "vitest run",
     "seed": "tsx scripts/seed.ts",
     "reset": "tsx scripts/reset.ts",
+    "fake-feeder": "node --import tsx scripts/fake-feeder.ts",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

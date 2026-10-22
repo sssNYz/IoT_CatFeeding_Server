@@ -95,7 +95,7 @@ describe("GET /me", () => {
 });
 
 describe("GET /feeders", () => {
-  it("gives the owner feeder01, never connected", async () => {
+  it("gives the owner only feeder01", async () => {
     const owner = await login("OWNER");
     const { body: me } = await call("GET", "/me", { token: owner });
     const { status, body } = await call("GET", "/feeders", { token: owner });
@@ -103,13 +103,14 @@ describe("GET /feeders", () => {
     const { feeders } = shaped(FeederList, body);
     expect(feeders.map((f) => f.id)).toEqual(["feeder01"]);
     expect(feeders[0].owner_id).toBe((me as { id: string }).id);
-    expect(feeders[0].status).toMatchObject({ state: "unknown", last_seen: null, synced: false });
   });
 
-  it("gives the admin every feeder", async () => {
+  it("gives the admin every feeder, a never-connected one as unknown", async () => {
     const { status, body } = await call("GET", "/feeders", { token: await login("ADMIN") });
     expect(status).toBe(200);
-    expect(shaped(FeederList, body).feeders.map((f) => f.id)).toContain("feeder01");
+    const { feeders } = shaped(FeederList, body);
+    expect(feeders.map((f) => f.id)).toEqual(["feeder01", "feeder02"]);
+    expect(feeders[1].status).toMatchObject({ state: "unknown", last_seen: null, synced: false });
   });
 
   it("returns 401 without a token", async () => {

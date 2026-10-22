@@ -1,10 +1,25 @@
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
-import type { Feeder } from "../contract/schemas";
+import type { Feeder, FeederStatus } from "../contract/schemas";
 import { db, schema } from "../db";
 import { pgToThai } from "../time";
 import type { AuthUser } from "./auth";
 import { ApiError } from "./http";
+
+function toStatus(
+  f: typeof schema.feeders.$inferSelect,
+  s: typeof schema.deviceStatus.$inferSelect | null,
+): z.infer<typeof FeederStatus> {
+  return {
+    feeder_id: f.id,
+    state: s?.state ?? "unknown",
+    last_seen: pgToThai(s?.lastSeen ?? null),
+    fw: s?.fw ?? null,
+    schedule_version: f.scheduleVersion,
+    applied_schedule_version: s?.appliedScheduleVersion ?? null,
+    synced: s?.appliedScheduleVersion === f.scheduleVersion,
+  };
+}
 
 /** Feeders the user may see (owner: their own; admin: all), each with its status. */
 export async function listFeeders(user: AuthUser): Promise<z.infer<typeof Feeder>[]> {
@@ -21,15 +36,7 @@ export async function listFeeders(user: AuthUser): Promise<z.infer<typeof Feeder
     name: f.name,
     owner_id: f.ownerId,
     paired_at: pgToThai(f.pairedAt),
-    status: {
-      feeder_id: f.id,
-      state: s?.state ?? "unknown",
-      last_seen: pgToThai(s?.lastSeen ?? null),
-      fw: s?.fw ?? null,
-      schedule_version: f.scheduleVersion,
-      applied_schedule_version: s?.appliedScheduleVersion ?? null,
-      synced: s?.appliedScheduleVersion === f.scheduleVersion,
-    },
+    status: toStatus(f, s),
   }));
 }
 
@@ -39,4 +46,11 @@ export async function requireFeeder(user: AuthUser, feederId: string) {
   if (!feeder) throw new ApiError(404, "not_found", `Feeder ${feederId} not found`);
   if (user.role !== "admin" && feeder.ownerId !== user.id) throw new ApiError(403, "forbidden", "Not your feeder");
   return feeder;
+}
+
+/** One feeder's online state and schedule sync, for the owner app's 5-second poll. */
+export async function feederStatus(user: AuthUser, feederId: string) {
+  const feeder = await requireFeeder(user, feederId);
+  const [s] = await db.select().from(schema.deviceStatus).where(eq(schema.deviceStatus.feederId, feederId));
+  return toStatus(feeder, s ?? null);
 }

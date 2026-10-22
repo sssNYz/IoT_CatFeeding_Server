@@ -65,3 +65,24 @@ export async function retained(topic: string): Promise<unknown> {
     await client.endAsync();
   }
 }
+
+/** Poll until `done` holds (the bridge works asynchronously), then return the last value. */
+export async function eventually<T>(get: () => Promise<T>, done: (value: T) => boolean, ms = 5_000): Promise<T> {
+  const until = Date.now() + ms;
+  for (;;) {
+    const value = await get();
+    if (done(value) || Date.now() > until) return value;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+/** Play feeder01 over MQTT with its own login and a Last Will, as the real board does (spec Section 5). */
+export function connectFeeder(opts: { keepalive?: number } = {}) {
+  return mqtt.connectAsync(process.env.MQTT_TEST_URL ?? "mqtt://localhost:1883", {
+    username: "feeder01",
+    password: env("FEEDER01_MQTT_PASSWORD"),
+    keepalive: opts.keepalive ?? 60,
+    reconnectPeriod: 0,
+    will: { topic: "catfeeder/feeder01/status", payload: Buffer.from('{"state":"offline"}'), qos: 1, retain: true },
+  });
+}

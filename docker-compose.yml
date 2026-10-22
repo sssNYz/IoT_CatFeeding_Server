@@ -42,7 +42,7 @@ services:
 
   mosquitto:
     image: eclipse-mosquitto:2
-    # Make the app's login from .env on every start, then run the broker. The password file and a copy of the
+    # Make the app's and feeder01's logins from .env on every start, then run the broker. The password file and a copy of the
     # mounted ACL are owned by mosquitto with no access for others, as Mosquitto 2.1 expects.
     command:
       - sh
@@ -50,6 +50,7 @@ services:
       - |
         rm -f /mosquitto/passwd
         mosquitto_passwd -c -b /mosquitto/passwd backend "$$MQTT_BACKEND_PASSWORD"
+        mosquitto_passwd -b /mosquitto/passwd feeder01 "$$FEEDER01_MQTT_PASSWORD"
         cp /mosquitto/config/acl /mosquitto/acl
         chown mosquitto:mosquitto /mosquitto/passwd /mosquitto/acl
         chmod 0600 /mosquitto/passwd /mosquitto/acl
@@ -57,6 +58,7 @@ services:
     environment:
       <<: *thai-time
       MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD}
+      FEEDER01_MQTT_PASSWORD: ${FEEDER01_MQTT_PASSWORD}
     # Localhost only, for tests and debugging on this machine; feeders get 8883 with TLS (ticket 04).
     ports:
       - "127.0.0.1:1883:1883"
