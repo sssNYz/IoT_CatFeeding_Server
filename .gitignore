@@ -1,0 +1,34 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Certificates and keys
+certs/
+*.pem
+*.key
+*.crt
+*.csr
+mosquitto/config/passwd
+
+# Docker data
+pgdata/
+miniodata/
+caddy_data/
+mosquitto/data/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Python (analysis notebook)
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+
+# OS / editors
+.DS_Store
+.obsidian/
+.vscode/

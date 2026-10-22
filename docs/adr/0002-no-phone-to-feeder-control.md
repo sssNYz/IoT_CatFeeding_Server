@@ -1,0 +1,3 @@
+# No direct phone-to-feeder control; the physical button is the offline fallback
+
+The owner app talks only to the server, over REST. It never connects to a feeder directly, whether over MQTT, Bluetooth or local Wi-Fi. When the Internet or the server is down, the feeder keeps feeding on its stored schedule, the owner uses the physical button for an extra feed, and feeding events queue on the feeder and upload once the server is reachable again. We considered Bluetooth or local Wi-Fi control from the phone, but it needs extra firmware, a pairing step so strangers can't feed the cat, new app screens, and a way to settle conflicting schedule edits. That is too much for a team whose edge work starts last with a fixed deadline.
