@@ -1,0 +1,2583 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Cat Feeder API",
+    "version": "0.1.0",
+    "description": "REST API for the owner app and admin dashboard. All times are Thai time (+07:00). Errors always use the Error shape."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1",
+      "description": "Local development"
+    },
+    {
+      "url": "https://catfeeder-g05.duckdns.org/api/v1",
+      "description": "VPS (hostname not final)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "userAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT from `POST /auth/login`. Lasts 3 days."
+      },
+      "deviceAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Device token shown once when the admin pairs the feeder."
+      }
+    },
+    "schemas": {
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOi..."
+          },
+          "expires_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-05T08:15:00+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "token",
+          "expires_at",
+          "user"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "6f1c2b8e-1d2a-4c3b-9e8f-0a1b2c3d4e5f"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "owner@catfeeder.test"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role"
+        ]
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "admin"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "unauthorized",
+                  "forbidden",
+                  "not_found",
+                  "validation_error",
+                  "conflict"
+                ],
+                "example": "validation_error"
+              },
+              "message": {
+                "type": "string",
+                "example": "portion_g must be between 5 and 100"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "field",
+                    "message"
+                  ]
+                },
+                "example": [
+                  {
+                    "field": "portion_g",
+                    "message": "Too big: expected <= 100"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "owner@catfeeder.test"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "example": "change-me"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "Feeder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,32}$",
+            "example": "feeder01",
+            "description": "The feeder's device_id"
+          },
+          "name": {
+            "type": "string",
+            "example": "Kitchen feeder"
+          },
+          "owner_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "null until the admin pairs it"
+          },
+          "paired_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T07:00:03+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FeederStatus"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "owner_id",
+          "paired_at",
+          "status"
+        ]
+      },
+      "FeederStatus": {
+        "type": "object",
+        "properties": {
+          "feeder_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,32}$",
+            "example": "feeder01",
+            "description": "The feeder's device_id"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DeviceState"
+          },
+          "last_seen": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T07:00:03+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          },
+          "fw": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "0.3.0"
+          },
+          "schedule_version": {
+            "type": "integer",
+            "example": 12,
+            "description": "Newest version on the server"
+          },
+          "applied_schedule_version": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "example": 12,
+            "description": "Version the feeder last reported"
+          },
+          "synced": {
+            "type": "boolean",
+            "example": true,
+            "description": "true when applied_schedule_version equals schedule_version. Show 'Synced ✓' or 'Waiting for feeder…'"
+          }
+        },
+        "required": [
+          "feeder_id",
+          "state",
+          "last_seen",
+          "fw",
+          "schedule_version",
+          "applied_schedule_version",
+          "synced"
+        ]
+      },
+      "DeviceState": {
+        "type": "string",
+        "enum": [
+          "online",
+          "offline",
+          "unknown"
+        ],
+        "description": "`unknown` = the feeder has never connected"
+      },
+      "PairResponse": {
+        "type": "object",
+        "properties": {
+          "feeder_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,32}$",
+            "example": "feeder01",
+            "description": "The feeder's device_id"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mqtt_username": {
+            "type": "string",
+            "example": "feeder01"
+          },
+          "mqtt_password": {
+            "type": "string",
+            "example": "q7Vd9...k2",
+            "description": "Shown once. Put it in secrets.h"
+          },
+          "device_token": {
+            "type": "string",
+            "example": "dt_8sJ2...pQ",
+            "description": "Shown once. Put it in secrets.h"
+          },
+          "paired_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T07:00:03+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          }
+        },
+        "required": [
+          "feeder_id",
+          "owner_id",
+          "mqtt_username",
+          "mqtt_password",
+          "device_token",
+          "paired_at"
+        ]
+      },
+      "PairRequest": {
+        "type": "object",
+        "properties": {
+          "owner_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "owner_id"
+        ]
+      },
+      "ScheduleList": {
+        "type": "object",
+        "properties": {
+          "feeder_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,32}$",
+            "example": "feeder01",
+            "description": "The feeder's device_id"
+          },
+          "schedule_version": {
+            "type": "integer",
+            "example": 12
+          },
+          "timezone": {
+            "type": "string",
+            "enum": [
+              "Asia/Bangkok"
+            ]
+          },
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Schedule"
+            }
+          }
+        },
+        "required": [
+          "feeder_id",
+          "schedule_version",
+          "timezone",
+          "schedules"
+        ]
+      },
+      "Schedule": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string",
+            "example": "morning-feed"
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "example": "07:00",
+            "description": "Daily time, Thai time, 24-hour HH:MM"
+          },
+          "portion_g": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 100,
+            "example": 40,
+            "description": "Grams of food, 5 to 100"
+          },
+          "sound_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "snd-01"
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "schedule_id",
+          "time",
+          "portion_g",
+          "sound_id",
+          "enabled"
+        ]
+      },
+      "ScheduleSaved": {
+        "type": "object",
+        "properties": {
+          "schedule": {
+            "$ref": "#/components/schemas/Schedule"
+          },
+          "schedule_version": {
+            "type": "integer",
+            "example": 13
+          }
+        },
+        "required": [
+          "schedule",
+          "schedule_version"
+        ],
+        "description": "Saved and published to the feeder. Not proof the feeder has it: check `synced` in the status."
+      },
+      "ScheduleInput": {
+        "type": "object",
+        "properties": {
+          "schedule_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{1,40}$",
+            "example": "morning-feed",
+            "description": "Omit to create a new schedule; send an existing one to update it"
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "example": "07:00",
+            "description": "Daily time, Thai time, 24-hour HH:MM"
+          },
+          "portion_g": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 100,
+            "example": 40,
+            "description": "Grams of food, 5 to 100"
+          },
+          "sound_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "snd-01"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true
+          }
+        },
+        "required": [
+          "time",
+          "portion_g"
+        ]
+      },
+      "ScheduleDeleted": {
+        "type": "object",
+        "properties": {
+          "schedule_version": {
+            "type": "integer",
+            "example": 14
+          }
+        },
+        "required": [
+          "schedule_version"
+        ]
+      },
+      "FeedCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "example": "cmd-3f9c2a"
+          },
+          "feeder_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,32}$",
+            "example": "feeder01",
+            "description": "The feeder's device_id"
+          },
+          "portion_g": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 100,
+            "example": 40,
+            "description": "Grams of food, 5 to 100"
+          },
+          "issued_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T08:15:00+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CommandStatus"
+          },
+          "event_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null,
+            "description": "Set when status is done"
+          }
+        },
+        "required": [
+          "command_id",
+          "feeder_id",
+          "portion_g",
+          "issued_at",
+          "status",
+          "event_id"
+        ]
+      },
+      "CommandStatus": {
+        "type": "string",
+        "enum": [
+          "sent",
+          "done"
+        ],
+        "description": "`sent` = published to the feeder. `done` = a feeding event with this command_id arrived"
+      },
+      "FeedCommandRequest": {
+        "type": "object",
+        "properties": {
+          "portion_g": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 100,
+            "example": 40,
+            "description": "Grams of food, 5 to 100"
+          },
+          "sound_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "snd-01"
+          }
+        },
+        "required": [
+          "portion_g"
+        ]
+      },
+      "EventList": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeedingEvent"
+            },
+            "description": "Newest occurred_at first"
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "FeedingEvent": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "example": "feeder01-0f7e1c"
+          },
+          "feeder_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]{3,32}$",
+            "example": "feeder01",
+            "description": "The feeder's device_id"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/Trigger"
+          },
+          "schedule_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "morning-feed"
+          },
+          "command_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": null
+          },
+          "scheduled_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T07:00:00+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          },
+          "occurred_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T07:00:03+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          },
+          "received_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T07:00:04+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          },
+          "target_portion_g": {
+            "type": "number",
+            "example": 40
+          },
+          "bowl_before_g": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 12.4
+          },
+          "bowl_after_g": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 50.9
+          },
+          "dispensed_g": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 38.5,
+            "description": "bowl_after_g − bowl_before_g"
+          },
+          "rfid": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "$ref": "#/components/schemas/RfidResult"
+              },
+              "tag_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "example": "E200001A"
+              },
+              "cat": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Mochi"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name"
+                ],
+                "description": "null if the tag is not registered"
+              }
+            },
+            "required": [
+              "result",
+              "tag_id",
+              "cat"
+            ]
+          },
+          "result": {
+            "$ref": "#/components/schemas/FeedResult"
+          },
+          "image_media_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "Fetch with GET /media/{media_id}. null if no photo (yet)"
+          }
+        },
+        "required": [
+          "event_id",
+          "feeder_id",
+          "trigger",
+          "schedule_id",
+          "command_id",
+          "scheduled_at",
+          "occurred_at",
+          "received_at",
+          "target_portion_g",
+          "bowl_before_g",
+          "bowl_after_g",
+          "dispensed_g",
+          "rfid",
+          "result",
+          "image_media_id"
+        ]
+      },
+      "Trigger": {
+        "type": "string",
+        "enum": [
+          "schedule",
+          "remote",
+          "button"
+        ]
+      },
+      "RfidResult": {
+        "type": "string",
+        "enum": [
+          "tag",
+          "unknown",
+          "multiple"
+        ],
+        "description": "`tag` = one tag read. A tag only means 'likely visitor' (shared bowl)"
+      },
+      "FeedResult": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "jam",
+          "missed",
+          "error"
+        ]
+      },
+      "Cat": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Mochi"
+          },
+          "rfid_tag": {
+            "type": "string",
+            "example": "E200001A"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rfid_tag"
+        ]
+      },
+      "CatInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "example": "Mochi"
+          },
+          "rfid_tag": {
+            "type": "string",
+            "pattern": "^[0-9A-F]{4,32}$",
+            "example": "E200001A",
+            "description": "Uppercase hex"
+          }
+        },
+        "required": [
+          "name",
+          "rfid_tag"
+        ]
+      },
+      "Sound": {
+        "type": "object",
+        "properties": {
+          "sound_id": {
+            "type": "string",
+            "example": "snd-01"
+          },
+          "name": {
+            "type": "string",
+            "example": "Mochi dinner call"
+          },
+          "media_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "duration_s": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "example": 2.4
+          },
+          "created_at": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+            "example": "2026-11-02T07:00:03+07:00",
+            "description": "Thai time (Asia/Bangkok), always +07:00"
+          }
+        },
+        "required": [
+          "sound_id",
+          "name",
+          "media_id",
+          "duration_s",
+          "created_at"
+        ]
+      },
+      "SoundUpload": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "example": "Mochi dinner call"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "Any phone recording (m4a, aac, mp3, wav), max 2 MB. The server converts it to MP3 for the feeder"
+          }
+        },
+        "required": [
+          "name",
+          "file"
+        ]
+      },
+      "ImageSaved": {
+        "type": "object",
+        "properties": {
+          "media_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "media_id",
+          "event_id"
+        ]
+      },
+      "ImageUpload": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "example": "feeder01-0f7e1c"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "JPEG, max 1 MB"
+          }
+        },
+        "required": [
+          "event_id",
+          "file"
+        ]
+      },
+      "AdminEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FeedingEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "raw": {
+                "type": "object",
+                "additionalProperties": {},
+                "description": "The exact MQTT payload the feeder sent"
+              }
+            },
+            "required": [
+              "raw"
+            ]
+          }
+        ]
+      },
+      "AdminStats": {
+        "type": "object",
+        "properties": {
+          "events_total": {
+            "type": "integer",
+            "example": 214
+          },
+          "duplicates_rejected": {
+            "type": "integer",
+            "example": 7,
+            "description": "Objective 4 result"
+          },
+          "failed": {
+            "type": "object",
+            "properties": {
+              "jam": {
+                "type": "integer",
+                "example": 1
+              },
+              "missed": {
+                "type": "integer",
+                "example": 2
+              },
+              "error": {
+                "type": "integer",
+                "example": 0
+              }
+            },
+            "required": [
+              "jam",
+              "missed",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "events_total",
+          "duplicates_rejected",
+          "failed"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Log in with email + password",
+        "security": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Who am I",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The logged-in user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders": {
+      "get": {
+        "operationId": "listFeeders",
+        "tags": [
+          "Feeders"
+        ],
+        "summary": "List feeders",
+        "description": "Owner: only their feeders. Admin: every feeder.",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Feeders with status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "feeders": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Feeder"
+                      }
+                    }
+                  },
+                  "required": [
+                    "feeders"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/status": {
+      "get": {
+        "operationId": "getFeederStatus",
+        "tags": [
+          "Feeders"
+        ],
+        "summary": "Online state and schedule sync",
+        "description": "Poll every 5 s while the screen is open.",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeederStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/pair": {
+      "post": {
+        "operationId": "pairFeeder",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Pair or re-pair a feeder (admin)",
+        "description": "Assigns the owner and creates a new MQTT password + device token. They are shown only in this response. Old secrets stop working.",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New secrets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/schedules": {
+      "get": {
+        "operationId": "listSchedules",
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "List schedules",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All schedules + current version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "saveSchedule",
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Create or update a schedule",
+        "description": "No schedule_id = create (the server makes one). Existing schedule_id = update. The whole set is then published to the feeder and schedule_version goes up by 1.",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved and published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSaved"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/schedules/{schedule_id}": {
+      "delete": {
+        "operationId": "deleteSchedule",
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Delete a schedule",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "schedule_id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted and republished",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleDeleted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/commands/feed": {
+      "post": {
+        "operationId": "feedNow",
+        "tags": [
+          "Commands"
+        ],
+        "summary": "Feed now",
+        "description": "Returns 202: the command was sent, not done. Poll GET /feeders/{id}/commands/{command_id} until status is `done`. If the feeder is offline the command is dropped after 60 s.",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedCommandRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Sent to the feeder",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedCommand"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/commands/{command_id}": {
+      "get": {
+        "operationId": "getCommand",
+        "tags": [
+          "Commands"
+        ],
+        "summary": "Check a manual feed",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "command_id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Command with status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedCommand"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/events": {
+      "get": {
+        "operationId": "listEvents",
+        "tags": [
+          "Events"
+        ],
+        "summary": "Feeding history",
+        "description": "History screen: use from/to. Live updates: poll every 5 s with since = the newest received_at you already have.",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "History: occurred_at >= from"
+            },
+            "required": false,
+            "description": "History: occurred_at >= from",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "History: occurred_at < to"
+            },
+            "required": false,
+            "description": "History: occurred_at < to",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "Polling: only events received after this time (received_at > since). Use the newest received_at you have. Catches late events from an outage, which from/to would miss"
+            },
+            "required": false,
+            "description": "Polling: only events received after this time (received_at > since). Use the newest received_at you have. Catches late events from an outage, which from/to would miss",
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/events.csv": {
+      "get": {
+        "operationId": "exportEventsCsv",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Export events as CSV (admin)",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "History: occurred_at >= from"
+            },
+            "required": false,
+            "description": "History: occurred_at >= from",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "History: occurred_at < to"
+            },
+            "required": false,
+            "description": "History: occurred_at < to",
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV, times in +07:00",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cats": {
+      "get": {
+        "operationId": "listCats",
+        "tags": [
+          "Cats"
+        ],
+        "summary": "List my cats",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cats": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Cat"
+                      }
+                    }
+                  },
+                  "required": [
+                    "cats"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCat",
+        "tags": [
+          "Cats"
+        ],
+        "summary": "Register a cat with its RFID tag",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cat"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "This RFID tag is already registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feeders/{id}/sounds": {
+      "get": {
+        "operationId": "listSounds",
+        "tags": [
+          "Sounds"
+        ],
+        "summary": "List feeding sounds",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sounds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sounds": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Sound"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sounds"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadSound",
+        "tags": [
+          "Sounds"
+        ],
+        "summary": "Upload a feeding sound",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/SoundUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Converted and stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Sound"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/{media_id}": {
+      "get": {
+        "operationId": "getMedia",
+        "tags": [
+          "Sounds"
+        ],
+        "summary": "Download an image or sound",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "media_id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/mpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}/images": {
+      "post": {
+        "operationId": "deviceUploadImage",
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Upload a visit photo (ESP32-CAM)",
+        "security": [
+          {
+            "deviceAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageSaved"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/devices/{id}/sounds/{sound_id}": {
+      "get": {
+        "operationId": "deviceGetSound",
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Download a feeding sound (main ESP32)",
+        "security": [
+          {
+            "deviceAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": true,
+            "description": "The feeder's device_id",
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "sound_id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MP3",
+            "content": {
+              "audio/mpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "operationId": "adminListUsers",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List users (to pick an owner when pairing)",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    }
+                  },
+                  "required": [
+                    "users"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/events": {
+      "get": {
+        "operationId": "adminListEvents",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "All feeding events, with raw payload",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "History: occurred_at >= from"
+            },
+            "required": false,
+            "description": "History: occurred_at >= from",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "History: occurred_at < to"
+            },
+            "required": false,
+            "description": "History: occurred_at < to",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?\\+07:00$",
+              "example": "2026-11-02T07:00:03+07:00",
+              "description": "Polling: only events received after this time (received_at > since). Use the newest received_at you have. Catches late events from an outage, which from/to would miss"
+            },
+            "required": false,
+            "description": "Polling: only events received after this time (received_at > since). Use the newest received_at you have. Catches late events from an outage, which from/to would miss",
+            "name": "since",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{3,32}$",
+              "example": "feeder01",
+              "description": "The feeder's device_id"
+            },
+            "required": false,
+            "description": "The feeder's device_id",
+            "name": "feeder",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/FeedResult"
+            },
+            "required": false,
+            "name": "result",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminEvent"
+                      }
+                    }
+                  },
+                  "required": [
+                    "events"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed; see error.details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/stats": {
+      "get": {
+        "operationId": "adminGetStats",
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Duplicate and failure counts",
+        "security": [
+          {
+            "userAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStats"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not your feeder, or admin only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

@@ -281,15 +281,17 @@ Base path `/api/v1`, JSON over HTTPS. User routes need `Authorization: Bearer <J
 | POST | `/feeders/{id}/schedules` | Mobile app, admin | Create/update → `201` + `schedule_version` | Paper III-C |
 | DELETE | `/feeders/{id}/schedules/{schedule_id}` | Mobile app, admin | Remove, then republish the set | Added |
 | POST | `/feeders/{id}/commands/feed` | Mobile app, admin | Manual feed → `202` + `command_id` | Paper III-B, IV-D |
-| GET | `/feeders/{id}/events?from=&to=` | Mobile app, admin | Feeding history with cat name (`from`/`to` in Thai time) | Paper IV-D |
+| GET | `/feeders/{id}/commands/{command_id}` | Mobile app, admin | Manual feed status: `sent` or `done` (+ `event_id`) | Added |
+| GET | `/feeders/{id}/events?from=&to=&since=` | Mobile app, admin | Feeding history with cat name. `from`/`to` filter `occurred_at` (history); `since` filters `received_at` (polling, so late events from an outage still appear) | Paper IV-D |
 | GET | `/feeders/{id}/events.csv` | Admin | Export for the Section V analysis | Added |
 | GET | `/feeders/{id}/status` | Mobile app, admin | Online/offline, last seen, `synced` (true/false) + both schedule versions | Added |
 | GET/POST | `/cats` | Mobile app, admin | List cats; register a cat with its RFID tag | Review |
+| GET | `/feeders/{id}/sounds` | Mobile app | List feeding sounds (to pick one for a schedule) | Added |
 | POST | `/feeders/{id}/sounds` | Mobile app | Upload a recorded sound | Paper Table 4 |
 | GET | `/media/{media_id}` | Mobile app, admin | Image or sound, streamed from MinIO | Added |
 | POST | `/devices/{id}/images` | ESP32-CAM | JPEG + `event_id` → MinIO | Paper IV-C |
 | GET | `/devices/{id}/sounds/{sound_id}` | Main ESP32 | Download a sound to cache locally | Added |
-| GET | `/admin/feeders` | Admin | Every feeder + online state + last event | Added |
+| GET | `/admin/users` | Admin | List users, to pick the owner when pairing | Added |
 | GET | `/admin/events?result=&feeder=` | Admin | All feeding events, filterable, with raw JSON | Added |
 | GET | `/admin/stats` | Admin | Duplicate count, failed events count | Added |
 
