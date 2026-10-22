@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { z } from "zod";
+import { ingestEvent } from "./api/events";
 import { publishAllSchedules } from "./api/schedules";
 import { db, schema } from "./db";
 import { mqttClient } from "./mqtt";
@@ -24,17 +25,21 @@ async function onStatus(feederId: string, payload: Buffer) {
     .onConflictDoUpdate({ target: schema.deviceStatus.feederId, set: { state, lastSeen: sql`now()`, ...known } });
 }
 
+const onEvent = async (feederId: string, payload: Buffer) => ingestEvent(feederId, JSON.parse(payload.toString()));
+
 /**
- * The server side of MQTT (spec Section 9): follow every feeder's status, and on each (re)connect
+ * The server side of MQTT (spec Section 9): follow every feeder's status, store its feeding events, and on each (re)connect
  * re-send every schedule set so the broker's retained messages match the database.
  */
 export function startBridge() {
   const client = mqttClient();
   client.on("connect", () => void publishAllSchedules().catch(console.error));
-  client.subscribe("catfeeder/+/status", { qos: 1 });
+  client.subscribe(["catfeeder/+/status", "catfeeder/+/event/feeding"], { qos: 1 });
   client.on("message", (topic, payload) => {
-    const [, feederId, kind] = topic.split("/");
-    if (kind !== "status") return;
-    onStatus(feederId, payload).catch((e) => console.error(`MQTT: status from ${feederId}:`, e));
+    const [, feederId, ...rest] = topic.split("/");
+    const kind = rest.join("/");
+    const handle =
+      kind === "status" ? onStatus(feederId, payload) : kind === "event/feeding" ? onEvent(feederId, payload) : undefined;
+    handle?.catch((e) => console.error(`MQTT: ${kind} from ${feederId}:`, e));
   });
 }

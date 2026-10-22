@@ -20,6 +20,8 @@ Keep the base URL in one config value. The mock has no `/api/v1` prefix; the rea
 4. **Live updates = polling, every 5 s, only while the screen is open.**
    - History list: first load with `GET /feeders/{id}/events?limit=50`. Then poll with `?since=<newest received_at you have>` and add new events to the top.
    - Use `since`, not `from`. Events from an outage arrive late with an old `occurred_at`; `since` filters on `received_at`, so they still appear.
+   - Pass `received_at` back exactly as the server sent it (it has milliseconds, e.g. `2026-11-02T07:00:04.123+07:00`), URL-encoded: `+` must be sent as `%2B`, or the server answers `422` saying so.
+   - A late event has an old `occurred_at`, so place it by `occurred_at` rather than always at the top.
    - Status: poll `GET /feeders/{id}/status`.
 5. **Schedule sync.** Saving a schedule returns `201` = saved on the server, not yet on the feeder. Show the status field `synced`: `true` → "Synced ✓", `false` → "Waiting for feeder…".
 6. **Schedules.** `POST /feeders/{id}/schedules` without `schedule_id` creates one; with an existing `schedule_id` updates it. Delete with `DELETE /feeders/{id}/schedules/{schedule_id}`. `portion_g` is an integer, 5–100.

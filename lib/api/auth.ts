@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
 import { db, schema } from "../db";
 import { toThai } from "../time";
-import { unauthorized } from "./http";
+import { ApiError, unauthorized } from "./http";
 
 // JWT lasts 3 days (spec Section 8).
 const TOKEN_LIFETIME_S = 3 * 24 * 60 * 60;
@@ -42,5 +42,12 @@ export async function requireUser(req: Request): Promise<AuthUser> {
     .from(schema.users)
     .where(eq(schema.users.id, sub));
   if (!user) throw unauthorized();
+  return user;
+}
+
+/** The user, who must be the admin (spec Section 8: admin-only actions), or a 401/403. */
+export async function requireAdmin(req: Request): Promise<AuthUser> {
+  const user = await requireUser(req);
+  if (user.role !== "admin") throw new ApiError(403, "forbidden", "Admins only");
   return user;
 }
