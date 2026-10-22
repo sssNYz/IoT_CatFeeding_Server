@@ -28,6 +28,10 @@ _Avoid_: Dashboard (on its own), web app
 One physical cat feeder, made of a main ESP32 and an ESP32-CAM, identified by its `device_id`.
 _Avoid_: Device (when you mean the whole unit), node
 
+**Pairing**:
+Giving a feeder its own secret logins and assigning it to an owner; re-pairing replaces the secrets and makes the old ones stop working.
+_Avoid_: Registration, provisioning, onboarding
+
 **Fake feeder**:
 A script that stands in for a real feeder, speaking the same protocols, so the server and owner app can be built before the hardware exists.
 _Avoid_: Simulator, mock device
@@ -41,3 +45,15 @@ _Avoid_: Log, feed log, record
 **Schedule**:
 One planned daily feeding time with its portion and sound.
 _Avoid_: Timer, alarm
+
+**Schedule version**:
+A number that goes up by one every time a feeder's set of schedules changes.
+_Avoid_: Revision, schedule ID
+
+**Synced**:
+A feeder is synced when the schedule version it reports equals the server's newest schedule version.
+_Avoid_: Up to date, applied
+
+**Feeding sound**:
+A short sound the owner records in the owner app, which the feeder plays at feeding time to call the cat.
+_Avoid_: Audio, ringtone, call

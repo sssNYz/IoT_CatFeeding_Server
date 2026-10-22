@@ -43,6 +43,11 @@ Terms are defined in `GLOSSARY.md`; decisions with reasons are in `docs/adr/`.
 | Fake feeder | One TypeScript script that plays both boards, so nothing waits for hardware |
 | Math | `analysis/analysis.ipynb` computes every paper number from the CSV export (Section 10) |
 | Timeline | Server + app 22–26 Oct → hardware → tests → paper (Section 11) |
+| Hostname | Free **DuckDNS** name (Section 4) |
+| Pairing | Admin pairs in the admin dashboard; secrets shown once, go into the firmware's `secrets.h` (Section 8) |
+| Schedule sync | Feeder reports its applied `schedule_version` in `status`; the owner app shows "Synced ✓" or "Waiting for feeder…" (Section 5) |
+| Feeding sounds | Owner app → server (converted to MP3) → main ESP32 downloads and caches (Section 9) |
+| Team | Sunny: server. Pisit: owner app. Both: hardware |
 
 > [!warning] Update the paper too
 > The interim paper names **FastAPI** (Abstract, Table 1, Table 2, Table 4, Section IV) and a "web/mobile application". The brief allows changing platform components, but the final manuscript must describe the system you really built. Replace FastAPI with Next.js in those places before 16 Nov.
@@ -173,7 +178,7 @@ One `docker-compose.yml` runs everything on one private network. Only two ports 
 - **Caddy** gets a free Let's Encrypt certificate automatically. It needs a **domain name** pointing to the server and ports 80 + 443 reachable. A real certificate matters because phones reject self-signed certificates in apps. A free DNS name (for example DuckDNS) is enough.
 - **Hosts:** develop on the laptop (Apple Silicon, arm64) with the fake feeder; the **demo host is a VPS**. Proxmox is dropped, so the VPS is the "cloud" for the paper. From 6 Nov the demo host is frozen: real feeder, 30-cycle test, Section V benchmarks and video all run on it. *Added.*
 - **Moving hosts:** every host runs `git pull && docker compose up --build` (never copy images: the laptop is arm64, a VPS is usually amd64). Copy only `.env` and the cert/CA files. Data from development is disposable.
-- **Hostname, not IP:** feeders connect to a DNS name (free DuckDNS or a paid domain, decide later); the MQTT server certificate carries that name in its SAN. Moving hosts then means updating DNS, not reflashing firmware.
+- **Hostname, not IP:** feeders connect to a free **DuckDNS** name (for example `catfeeder-g05.duckdns.org`); the MQTT server certificate carries that name in its SAN. Moving hosts then means updating DNS, not reflashing firmware.
 - **Local development:** plain `http://<laptop-ip>:3000`, no Caddy or certificates needed.
 - `app` talks to `mosquitto` on internal port 1883 (not open outside). Feeders always use 8883 with TLS. *Added.*
 - Secrets (DB password, JWT secret, MinIO keys, seed passwords) live in a `.env` file. Commit only `.env.example`.
@@ -254,7 +259,9 @@ Field names are *Added*; the fields themselves come from Paper IV-A and IV-D. Al
 - `result`: `ok` | `jam` | `missed` | `error`
 - The numbers above are example values, not measurements.
 
-**status** — the ESP32 publishes `{"state": "online"}` (retained) after it connects. Its Last Will is `{"state": "offline"}` (retained, QoS 1).
+**status** — the ESP32 publishes `{"state": "online", "schedule_version": 12, "fw": "0.3.0"}` (retained) after it connects, and again every time it applies a new schedule set. Its Last Will is `{"state": "offline"}` (retained, QoS 1).
+
+The server compares the reported `schedule_version` with `feeders.schedule_version`: equal means the feeder is **synced**; lower means it has not received the newest schedules yet. The owner app shows "Synced ✓" or "Waiting for feeder…".
 
 ## 6. REST API
 
@@ -269,14 +276,14 @@ Base path `/api/v1`, JSON over HTTPS. User routes need `Authorization: Bearer <J
 | POST | `/auth/login` | Mobile app, admin | Email + password → JWT (3 days) | Paper IV-C, Review |
 | GET | `/me` | Mobile app, admin | Who am I + role | Added |
 | GET | `/feeders` | Mobile app, admin | Owner: my feeders. Admin: all feeders. With online state | Added |
-| POST | `/feeders/{id}/pair` | Admin | New MQTT password + device token; revoke old ones | Paper IV-C |
+| POST | `/feeders/{id}/pair` | Admin | Body: `owner_id`. Assign the owner, make a new MQTT password + device token (shown once), revoke old ones | Paper IV-C |
 | GET | `/feeders/{id}/schedules` | Mobile app, admin | List schedules + current version | Added |
 | POST | `/feeders/{id}/schedules` | Mobile app, admin | Create/update → `201` + `schedule_version` | Paper III-C |
 | DELETE | `/feeders/{id}/schedules/{schedule_id}` | Mobile app, admin | Remove, then republish the set | Added |
 | POST | `/feeders/{id}/commands/feed` | Mobile app, admin | Manual feed → `202` + `command_id` | Paper III-B, IV-D |
 | GET | `/feeders/{id}/events?from=&to=` | Mobile app, admin | Feeding history with cat name (`from`/`to` in Thai time) | Paper IV-D |
 | GET | `/feeders/{id}/events.csv` | Admin | Export for the Section V analysis | Added |
-| GET | `/feeders/{id}/status` | Mobile app, admin | Online/offline + last seen | Added |
+| GET | `/feeders/{id}/status` | Mobile app, admin | Online/offline, last seen, `synced` (true/false) + both schedule versions | Added |
 | GET/POST | `/cats` | Mobile app, admin | List cats; register a cat with its RFID tag | Review |
 | POST | `/feeders/{id}/sounds` | Mobile app | Upload a recorded sound | Paper Table 4 |
 | GET | `/media/{media_id}` | Mobile app, admin | Image or sound, streamed from MinIO | Added |
@@ -300,7 +307,7 @@ Nine tables. Media files stay in MinIO; PostgreSQL keeps only the object key (Pa
 | `users` | `id`, `email` UNIQUE, `password_hash`, `role` (`admin` / `owner`), `created_at` | Email + password only; no email verification (Review) |
 | `feeders` | `id` (e.g. `feeder01`) PK, `owner_id` FK, `name`, `schedule_version`, `device_token_hash`, `paired_at` | Owner link = the access check (Paper IV-C) |
 | `cats` | `id` PK, `owner_id` FK, `name`, `rfid_tag` UNIQUE | Required now: cat ID is by RFID (Review) |
-| `device_status` | `feeder_id` PK, `state`, `last_seen`, `fw` | Updated from the `status` topic |
+| `device_status` | `feeder_id` PK, `state`, `last_seen`, `fw`, `applied_schedule_version` | Updated from the `status` topic |
 | `schedules` | PK (`feeder_id`, `schedule_id`), `time`, `timezone` (always `Asia/Bangkok`), `portion_g`, `sound_id`, `enabled` | Whole set is published on every change |
 | `commands` | `command_id` PK, `feeder_id`, `portion_g`, `issued_by`, `issued_at`, `done_event_id` | Links a manual feed to its event |
 | `feeding_events` | `event_id` PK, `feeder_id`, `trigger`, `schedule_id`, `command_id`, `scheduled_at`, `occurred_at`, `received_at` DEFAULT `now()`, `target_portion_g`, `bowl_before_g`, `bowl_after_g`, `rfid_result`, `rfid_tag`, `result`, `raw` JSONB | PK on `event_id` = duplicate protection. Cat name = join `cats` on `rfid_tag` |
@@ -331,7 +338,8 @@ User identity and device identity stay separate (Paper IV-C). Each rule below sa
 | Feeder checks the server | Own CA for MQTT; put its cert in ESP32 firmware; the server cert's name/IP must match what the ESP32 connects to | Paper (CA: Added) |
 | HTTPS for app, dashboard, camera | Caddy with an automatic Let's Encrypt certificate | Review |
 | ESP32-CAM upload needs a device token | Random token; store only its hash in `feeders` | Paper |
-| Re-pair revokes old credentials | Rewrite the password file, then send `SIGHUP` to Mosquitto; rotate the token | Paper (reload: Added) |
+| Pairing puts secrets on the boards | Admin clicks "Pair" in the admin dashboard and picks the owner; the server shows the MQTT password + device token **once**; paste them (and the home Wi-Fi name/password) into the firmware's `secrets.h` (never committed) and flash both boards. Phone-based setup is future work (ADR 0002) | Added |
+| Re-pair revokes old credentials | Rewrite the password file, then send `SIGHUP` to Mosquitto; rotate the token. A still-connected board may keep its session until it reconnects, so restart Mosquitto (or the board) to force it off | Paper (reload: Added) |
 | No secrets in payloads, file names or logs | Image key = `images/{feeder}/{event_id}.jpg`; never log tokens | Paper |
 | DB and MinIO stay private | No `ports:` for `db` and `minio` in Compose | Paper |
 
@@ -342,7 +350,7 @@ Note: TLS certificates and JWT expiry checks depend on a correct clock. With NTP
 
 ## 9. Server logic rules
 
-These 8 rules are the "brain" of the Next.js MQTT bridge and API. Rules 1–4 and 7 come from the paper; the rest are *Added* to make them work.
+These 9 rules are the "brain" of the Next.js MQTT bridge and API. Rules 1–4 and 7 come from the paper; the rest are *Added* to make them work.
 
 1. **Event ingest.** Subscribe to `catfeeder/+/event/feeding`. Check that the `device_id` in the topic equals the one in the payload. Then `INSERT … ON CONFLICT (event_id) DO NOTHING`. When nothing was inserted, add a row to `duplicate_events`: that count is your duplicate-prevention result.
 2. **Schedule change.** Save the row → add 1 to `schedule_version` → publish the **whole** set to `schedule/set`, retained, QoS 1. Reply `201`. This means "accepted", not "the feeder has it" (Paper III-C).
@@ -350,8 +358,9 @@ These 8 rules are the "brain" of the Next.js MQTT bridge and API. Rules 1–4 an
 4. **Status.** Subscribe to `catfeeder/+/status` and update `device_status` (state + last seen).
 5. **Images.** The ESP32-CAM uploads with the `event_id`. The image may arrive before or after its event (for example after an outage), so link them at read time by `event_id`, never by arrival order.
 6. **Late events.** Offline events arrive later with their original `occurred_at`. `received_at` is filled by the DB (`DEFAULT now()`). `received_at − occurred_at` is your sync delay for objective 3. Both are Thai time, so the subtraction needs no conversion.
-7. **Missed feedings.** Store events with `result = missed`. The server never triggers a feed on its own (Paper IV-D).
-8. **Old commands.** A QoS 1 command can wait in the broker while the feeder is offline and then arrive late. Use a clean MQTT session on the ESP32, and let it ignore a command older than 60 s (compare `issued_at` with its own Thai-time clock). Otherwise an old button press could release food hours later.
+7. **Feeding sounds.** The owner records a sound in the owner app and uploads it (`POST /feeders/{id}/sounds`). The server converts it with `ffmpeg` to one format the ESP32 can play (MP3, mono, 8–16 kHz), stores it in MinIO and returns a `sound_id`. The main ESP32 downloads a sound the first time a schedule or command names a `sound_id` it does not have, and caches it on flash/SD. The phone never sends the file to the feeder directly (ADR 0002). *Added.*
+8. **Missed feedings.** Store events with `result = missed`. The server never triggers a feed on its own (Paper IV-D).
+9. **Old commands.** A QoS 1 command can wait in the broker while the feeder is offline and then arrive late. Use a clean MQTT session on the ESP32, and let it ignore a command older than 60 s (compare `issued_at` with its own Thai-time clock). Otherwise an old button press could release food hours later.
 
 ## 10. Tests, benchmarks and repo
 
@@ -409,11 +418,12 @@ gantt
 None of these block the 26 Oct server core.
 
 - [x] **Mobile app: native or web?** Decided: the owner app is already ~50% built as a separate mobile app; it uses this API.
-- [ ] **Domain name:** free DuckDNS or a paid domain? Needed once the VPS is back.
+- [x] **Domain name:** free DuckDNS.
 - [x] **How does the ESP32-CAM get the `event_id`?** UART wire from the main ESP32 (ADR 0001).
-- [ ] **How does the main ESP32 get the owner's sound file?** Proposed: download it once by `sound_id` with the device token and cache it on flash or SD.
+- [x] **How does the main ESP32 get the owner's sound file?** Owner app uploads → server converts to MP3 → ESP32 downloads by `sound_id` and caches (Section 9, rule 7).
 - [x] ~~Does CT 108 allow Docker?~~ Proxmox dropped; the demo host is a VPS.
-- [ ] **Should the ESP32 report its applied `schedule_version`** in its status message? Then the app can show "feeder synced to v12".
+- [x] **Should the ESP32 report its applied `schedule_version`?** Yes, in its status message (Section 5).
 - [x] ~~Does Proxmox count as "cloud"?~~ Moot: the VPS is the cloud.
-- [ ] **Pairing flow:** how a new feeder gets its MQTT password and device token in practice.
-- [ ] **Who builds what?** For example, Sunny: Next.js server + admin dashboard + mobile app; Pisit: ESP32 firmware. Every member must speak in the video and answer questions.
+- [x] **Pairing flow:** admin pairs in the admin dashboard; secrets go into `secrets.h` and are flashed (Section 8).
+- [x] **Who builds what?** Sunny: server (Next.js API, MQTT bridge, admin dashboard, Docker, VPS). Pisit: owner app. Both: hardware. Every member must speak in the video and answer questions.
+- [ ] **Who writes the paper and the analysis notebook?**
