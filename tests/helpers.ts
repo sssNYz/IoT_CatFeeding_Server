@@ -1,4 +1,5 @@
 import type { ZodType, z } from "zod";
+import jpeg from "jpeg-js";
 import mqtt from "mqtt";
 import { expect } from "vitest";
 import { ErrorResponse } from "../lib/contract/schemas";
@@ -85,4 +86,27 @@ export function connectFeeder(opts: { keepalive?: number } = {}) {
     reconnectPeriod: 0,
     will: { topic: "catfeeder/feeder01/status", payload: Buffer.from('{"state":"offline"}'), qos: 1, retain: true },
   });
+}
+
+/** A small real JPEG (solid colour), like the ESP32-CAM sends. */
+export function makeJpeg(rgb: [number, number, number] = [200, 120, 60], size = 32) {
+  const data = Buffer.alloc(size * size * 4);
+  for (let i = 0; i < data.length; i += 4) data.set([...rgb, 255], i);
+  return Buffer.from(jpeg.encode({ data, width: size, height: size }, 80).data);
+}
+
+/** POST /devices/{id}/images as multipart form data, the way the camera uploads. */
+export async function uploadImage(
+  feederId: string,
+  opts: { token?: string; eventId?: string; file?: Buffer; type?: string },
+) {
+  const form = new FormData();
+  if (opts.eventId !== undefined) form.set("event_id", opts.eventId);
+  if (opts.file) form.set("file", new Blob([new Uint8Array(opts.file)], { type: opts.type ?? "image/jpeg" }), "photo.jpg");
+  const res = await fetch(`${BASE}/devices/${feederId}/images`, {
+    method: "POST",
+    headers: opts.token ? { authorization: `Bearer ${opts.token}` } : {},
+    body: form,
+  });
+  return { status: res.status, body: (await res.json()) as unknown };
 }

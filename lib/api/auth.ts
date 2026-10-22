@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
 import { db, schema } from "../db";
@@ -50,4 +51,20 @@ export async function requireAdmin(req: Request): Promise<AuthUser> {
   const user = await requireUser(req);
   if (user.role !== "admin") throw new ApiError(403, "forbidden", "Admins only");
   return user;
+}
+
+// Device tokens are long random strings, so a plain SHA-256 is enough; only the hash is stored (spec Section 8).
+export const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
+
+/** A device route's caller must hold this feeder's device token (`Authorization: Bearer <token>`), or a 401. */
+export async function requireDevice(req: Request, feederId: string) {
+  const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
+  if (!token) throw unauthorized("Device token missing");
+  const [feeder] = await db
+    .select({ hash: schema.feeders.deviceTokenHash })
+    .from(schema.feeders)
+    .where(eq(schema.feeders.id, feederId));
+  const given = Buffer.from(tokenHash(token), "hex");
+  const stored = feeder?.hash ? Buffer.from(feeder.hash, "hex") : undefined;
+  if (!stored || !timingSafeEqual(given, stored)) throw unauthorized("Wrong device token");
 }

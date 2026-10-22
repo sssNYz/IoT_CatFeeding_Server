@@ -20,7 +20,7 @@ The API is at `http://localhost:3000/api/v1` (contract: `openapi.json`). On firs
 | Mock server for the app (port 4010) | `npm run mock` |
 | Regenerate `openapi.json` | `npm run openapi` |
 | New migration after editing `lib/db/schema.ts` | `npm run db:generate` |
-| Fake feeder01 (online, gets schedules, feeds at schedule times and on Feed now) | `npm run fake-feeder`, then press `f` button feed, `o` outage replay (5 late events), `d` resend the last event. Ctrl+C = goes offline cleanly; `kill -9 <pid it prints>` = power cut, Last Will |
+| Fake feeder01 (online, gets schedules, feeds at schedule times and on Feed now, uploads a photo per feeding) | `npm run fake-feeder`, then press `f` button feed, `o` outage replay (5 late events), `d` resend the last event. Ctrl+C = goes offline cleanly; `kill -9 <pid it prints>` = power cut, Last Will |
 | Watch the schedule sets the feeders get | `docker compose exec mosquitto sh -c 'mosquitto_sub -u backend -P "$MQTT_BACKEND_PASSWORD" -t "catfeeder/+/schedule/set" -v'` |
 
-`db` and `minio` have no published ports, so database commands run inside the `app` container. Mosquitto's 1883 is published on `127.0.0.1` only (tests read the retained schedule set through it); feeders will use 8883 with TLS.
+`db` and `minio` have no published ports, so database commands run inside the `app` container, and photos are only reachable through `GET /api/v1/media/{id}`. Mosquitto's 1883 is published on `127.0.0.1` only (tests read the retained schedule set through it); feeders will use 8883 with TLS.

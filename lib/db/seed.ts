@@ -1,5 +1,6 @@
 import { hash } from "bcryptjs";
 import { count, sql } from "drizzle-orm";
+import { tokenHash } from "../api/auth";
 import { toThai } from "../time";
 import { db, schema } from "./index";
 
@@ -10,8 +11,9 @@ function env(name: string) {
 }
 
 /**
- * Test data from .env (spec Section 7): one admin, one owner who owns feeder01 with two daily feeds
- * two cats with RFID tags and about 20 past feeding events, and feeder02 that nobody owns yet (not paired), so "someone else's feeder" can be tried.
+ * Test data from .env (spec Section 7): one admin; one owner who owns feeder01 (two daily feeds, a device
+ * token), two cats with RFID tags and about 20 past feeding events; and feeder02, which nobody owns yet
+ * (not paired), so "someone else's feeder" can be tried.
  */
 export async function seed() {
   await db.transaction(async (tx) => {
@@ -34,12 +36,15 @@ export async function seed() {
       name: "Kitchen feeder",
       pairedAt: sql`now()`,
       scheduleVersion: 1,
+      deviceTokenHash: tokenHash(env("FEEDER01_DEVICE_TOKEN")),
     });
     await tx.insert(schema.schedules).values([
       { feederId: "feeder01", scheduleId: "morning-feed", time: "07:00", portionG: 40 },
       { feederId: "feeder01", scheduleId: "evening-feed", time: "18:00", portionG: 40 },
     ]);
-    await tx.insert(schema.feeders).values({ id: "feeder02", name: "Spare feeder" });
+    await tx
+      .insert(schema.feeders)
+      .values({ id: "feeder02", name: "Spare feeder", deviceTokenHash: tokenHash(env("FEEDER02_DEVICE_TOKEN")) });
     await tx.insert(schema.cats).values([
       { ownerId: owner.id, name: "Mochi", rfidTag: "E200001A" },
       { ownerId: owner.id, name: "Tora", rfidTag: "E200001B" },

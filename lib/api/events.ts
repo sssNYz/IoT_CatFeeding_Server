@@ -7,7 +7,7 @@ import { pgToThai } from "../time";
 import type { AuthUser } from "./auth";
 import { requireFeeder } from "./feeders";
 
-const { cats, feedingEvents } = schema;
+const { cats, feedingEvents, media } = schema;
 
 // What a feeder publishes on catfeeder/{id}/event/feeding (spec Section 5). Unknown extra fields are kept in `raw`.
 const EventMessage = z.object({
@@ -76,7 +76,11 @@ export async function ingestEvent(feederId: string, message: unknown) {
 
 type CatRef = { id: string; name: string } | null;
 
-const toEvent = (row: typeof feedingEvents.$inferSelect, cat: CatRef): z.infer<typeof FeedingEvent> => ({
+const toEvent = (
+  row: typeof feedingEvents.$inferSelect,
+  cat: CatRef,
+  imageMediaId: string | null,
+): z.infer<typeof FeedingEvent> => ({
   event_id: row.eventId,
   feeder_id: row.feederId,
   trigger: row.trigger,
@@ -91,7 +95,7 @@ const toEvent = (row: typeof feedingEvents.$inferSelect, cat: CatRef): z.infer<t
   dispensed_g: row.bowlBeforeG === null || row.bowlAfterG === null ? null : subtract(row.bowlAfterG, row.bowlBeforeG),
   rfid: { result: row.rfidResult, tag_id: row.rfidTag, cat: row.rfidResult === "tag" ? cat : null },
   result: row.result,
-  image_media_id: null,
+  image_media_id: imageMediaId,
 });
 
 // Grams have at most a few decimals; round away float noise (50.9 − 12.4 = 38.49999…).
@@ -103,11 +107,16 @@ const subtract = (a: number, b: number) => Math.round((a - b) * 1000) / 1000;
  */
 export async function listEvents(user: AuthUser, feederId: string, query: z.infer<typeof EventsQuery>) {
   await requireFeeder(user, feederId);
-  // The cat's name comes from the tag at read time, so a cat registered after its visits still shows up.
+  // The cat's name and the photo are both joined at read time: a cat registered after its visits still shows
+  // up, and a photo links to its event by event_id whichever arrived first (ADR 0001).
   const rows = await db
-    .select({ event: feedingEvents, cat: { id: cats.id, name: cats.name } })
+    .select({ event: feedingEvents, cat: { id: cats.id, name: cats.name }, imageId: media.id })
     .from(feedingEvents)
     .leftJoin(cats, eq(cats.rfidTag, feedingEvents.rfidTag))
+    .leftJoin(
+      media,
+      and(eq(media.feederId, feedingEvents.feederId), eq(media.eventId, feedingEvents.eventId), eq(media.kind, "image")),
+    )
     .where(
       and(
         eq(feedingEvents.feederId, feederId),
@@ -118,7 +127,7 @@ export async function listEvents(user: AuthUser, feederId: string, query: z.infe
     )
     .orderBy(desc(feedingEvents.occurredAt), desc(feedingEvents.eventId))
     .limit(query.limit ?? 50);
-  return rows.map((r) => toEvent(r.event, r.cat));
+  return rows.map((r) => toEvent(r.event, r.cat, r.imageId));
 }
 
 /** Totals for the admin dashboard and the paper: events stored, duplicates rejected (objective 4), failures. */

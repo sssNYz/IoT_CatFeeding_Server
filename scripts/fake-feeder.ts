@@ -1,4 +1,5 @@
-// Plays a feeder over MQTT so the owner app sees a live feeder without hardware (tickets 04–06).
+// Plays a feeder (main board over MQTT, ESP32-CAM over HTTP) so the owner app sees a live feeder without
+// hardware (tickets 04–07).
 // Speaks exactly the spec Section 5 payloads, so the ESP32 firmware can copy this behaviour.
 //   npm run fake-feeder              # feeder01 against the local stack
 //   Feeds by itself at each enabled schedule time (Thai time) and on "Feed now" commands under 60 s old.
@@ -8,6 +9,7 @@
 // Runs as one process (node --import tsx, not the tsx CLI, which runs the script in a child process),
 // so the printed pid is the one holding the MQTT connection.
 import { randomBytes } from "node:crypto";
+import jpeg from "jpeg-js";
 import mqtt from "mqtt";
 import { nowTh, toThai } from "../lib/time";
 
@@ -105,17 +107,57 @@ function feedingEvent(
     bowl_before_g: before,
     bowl_after_g: round1(before + portion * (0.92 + Math.random() * 0.12)), // within about ±8% of the target
     rfid: readRfid(),
-    image_expected: false, // no fake camera yet (ticket 07)
+    image_expected: true,
     result: "ok",
     device: { rssi: -55 - Math.floor(Math.random() * 15), fw: FW, queue_len: 0 },
   };
 }
 
-function sendEvent(event: ReturnType<typeof feedingEvent>, note = "") {
+function sendEvent(event: ReturnType<typeof feedingEvent>, note = "", photo = true) {
   lastEvent = event;
   client.publish(topic("event/feeding"), JSON.stringify(event), { qos: 1 });
   const who = event.rfid.tag_id ?? event.rfid.result;
   console.log(`${id}: fed ${event.target_portion_g} g (${event.trigger}, ${who}) ${event.event_id}${note}`);
+  if (photo) void uploadPhoto(event.event_id, event.rfid.tag_id);
+}
+
+// ---------- The ESP32-CAM ----------
+// The camera gets the event_id from the main board over UART (ADR 0001) and uploads over HTTPS with the
+// device token; it never uses MQTT.
+
+const API = process.env.API_BASE_URL ?? "http://localhost:3000/api/v1";
+const deviceToken = process.env[`${id.toUpperCase()}_DEVICE_TOKEN`];
+
+// A plain colour per visitor stands in for the photo: orange Mochi, grey Tora, blue for anyone else.
+const COLOURS: Record<string, [number, number, number]> = { E200001A: [230, 140, 50], E200001B: [130, 130, 130] };
+
+function photoOf(tagId: string | null) {
+  const [r, g, b] = COLOURS[tagId ?? ""] ?? [60, 110, 200];
+  const size = 160;
+  const data = Buffer.alloc(size * size * 4);
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const shade = 0.75 + 0.25 * Math.sin((x + y) / 18); // soft stripes, so it reads as a picture
+      data.set([r * shade, g * shade, b * shade, 255], (y * size + x) * 4);
+    }
+  return jpeg.encode({ data, width: size, height: size }, 80).data;
+}
+
+async function uploadPhoto(eventId: string, tagId: string | null) {
+  if (!deviceToken) return console.log(`${id}: no ${id.toUpperCase()}_DEVICE_TOKEN, so no photo for ${eventId}`);
+  const form = new FormData();
+  form.set("event_id", eventId);
+  form.set("file", new Blob([new Uint8Array(photoOf(tagId))], { type: "image/jpeg" }), `${eventId}.jpg`);
+  try {
+    const res = await fetch(`${API}/devices/${id}/images`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${deviceToken}` },
+      body: form,
+    });
+    console.log(`${id}: camera ${res.ok ? "uploaded" : `failed (${res.status})`} the photo for ${eventId}`);
+  } catch (e) {
+    console.log(`${id}: camera could not reach ${API}: ${(e as Error).message}`);
+  }
 }
 
 // Check the clock every second and feed once per enabled schedule per day, like the board's own timer.
@@ -134,11 +176,14 @@ setInterval(() => {
 
 /** Five button feedings from the last hour, sent now: what a board uploads from its queue after an outage. */
 function replayOutage() {
-  console.log(`${id}: back from an outage, uploading 5 queued events`);
-  for (let i = 5; i >= 1; i--) {
-    const occurred = toThai(new Date(Date.now() - i * 12 * 60_000));
-    sendEvent(feedingEvent("button", 20, { occurred_at: occurred }), ` (happened ${occurred.slice(11, 16)})`);
-  }
+  console.log(`${id}: back from an outage, uploading 5 queued events (the camera sends its photos first)`);
+  const queued = [5, 4, 3, 2, 1].map((i) =>
+    feedingEvent("button", 20, { occurred_at: toThai(new Date(Date.now() - i * 12 * 60_000)) }),
+  );
+  // Photos before their events: the server must link them by event_id, not by arrival order.
+  void Promise.all(queued.map((e) => uploadPhoto(e.event_id, e.rfid.tag_id))).then(() => {
+    for (const e of queued) sendEvent(e, ` (happened ${e.occurred_at.slice(11, 16)})`, false);
+  });
 }
 
 if (process.stdin.isTTY) {

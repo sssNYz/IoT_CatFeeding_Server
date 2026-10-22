@@ -11,6 +11,7 @@ services:
       <<: *thai-time
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       MQTT_URL: mqtt://mosquitto:1883
+      MINIO_URL: http://minio:9000
     ports:
       - "3000:3000"
     depends_on:

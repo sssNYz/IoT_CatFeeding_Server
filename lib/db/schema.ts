@@ -1,4 +1,4 @@
-import { boolean, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 // Times stay Thai-time strings from the database (spec Section 2): mode "string", never JS Date.
 const thaiTime = (name: string) => timestamp(name, { withTimezone: true, mode: "string" });
@@ -114,3 +114,24 @@ export const commands = pgTable("commands", {
   issuedAt: thaiTime("issued_at").notNull(),
   doneEventId: text("done_event_id"),
 });
+
+export const mediaKind = pgEnum("media_kind", ["image", "sound"]);
+
+// Files in MinIO. A photo carries its event_id and is joined to the event at read time (ADR 0001): it may
+// arrive before or after the event. One photo per event (a re-upload replaces it).
+export const media = pgTable(
+  "media",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    feederId: text("feeder_id")
+      .notNull()
+      .references(() => feeders.id, { onDelete: "cascade" }),
+    kind: mediaKind("kind").notNull(),
+    objectKey: text("object_key").notNull(),
+    eventId: text("event_id"),
+    soundId: text("sound_id"),
+    contentType: text("content_type").notNull(),
+    createdAt: thaiTime("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique("media_feeder_event_unique").on(t.feederId, t.eventId)],
+);
