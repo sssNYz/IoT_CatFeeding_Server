@@ -1,13 +1,22 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "incremental": true,
+    "allowJs": false,
+    "paths": { "@/*": ["./*"] },
+    "plugins": [{ "name": "next" }]
   },
-  "include": ["lib", "scripts"]
+  "include": ["lib", "scripts", "app", "tests", "instrumentation.ts", "*.config.ts", "next-env.d.ts"],
+  "exclude": ["node_modules"]
 }
