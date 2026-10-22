@@ -17,6 +17,10 @@ export class ApiError extends Error {
 
 export const unauthorized = (message = "Token missing or expired") => new ApiError(401, "unauthorized", message);
 
+/** A 422 naming one bad field, in the same shape a failed schema check gives. */
+export const invalid = (field: string, message: string) =>
+  new ApiError(422, "validation_error", `${field}: ${message}`, [{ field, message }]);
+
 /** Wrap a Route Handler so every thrown ApiError becomes `{ error: { code, message, details? } }`. */
 export function route<Ctx>(handler: (req: Request, ctx: Ctx) => Promise<Response>) {
   return async (req: Request, ctx: Ctx) => {

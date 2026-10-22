@@ -4,16 +4,14 @@ import { db, schema } from "../db";
 import { getObject, putObject } from "../storage";
 import type { AuthUser } from "./auth";
 import { requireFeeder } from "./feeders";
-import { ApiError } from "./http";
+import { ApiError, invalid } from "./http";
 
 const { media } = schema;
 
 const MAX_IMAGE_BYTES = 1024 * 1024; // contract: JPEG, max 1 MB
 // event_id goes into the object key, so it may only be a plain name (no "/" or "..").
-const EVENT_ID = /^[A-Za-z0-9_-]{1,100}$/;
-
-const invalid = (field: string, message: string) =>
-  new ApiError(422, "validation_error", `${field}: ${message}`, [{ field, message }]);
+const SAFE_EVENT_ID = /^[A-Za-z0-9_-]{1,100}$/;
+const JPEG = "image/jpeg";
 
 /** Read the camera's multipart upload: event_id and a real JPEG (checked by its first bytes) of at most 1 MB. */
 export async function readImageUpload(req: Request) {
@@ -28,7 +26,7 @@ export async function readImageUpload(req: Request) {
     throw invalid("body", "Must be multipart/form-data with event_id and file");
   }
   const eventId = form.get("event_id");
-  if (typeof eventId !== "string" || !EVENT_ID.test(eventId)) {
+  if (typeof eventId !== "string" || !SAFE_EVENT_ID.test(eventId)) {
     throw invalid("event_id", "Must be the feeding's event_id (letters, digits, - and _)");
   }
   const file = form.get("file");
@@ -45,24 +43,27 @@ export async function readImageUpload(req: Request) {
  */
 export async function saveImage(feederId: string, eventId: string, data: Buffer) {
   const objectKey = `images/${feederId}/${eventId}.jpg`;
-  await putObject(objectKey, data, "image/jpeg");
+  await putObject(objectKey, data, JPEG);
   const [row] = await db
     .insert(media)
-    .values({ feederId, kind: "image", objectKey, eventId, contentType: "image/jpeg" })
+    .values({ feederId, kind: "image", objectKey, eventId, contentType: JPEG })
     .onConflictDoUpdate({ target: [media.feederId, media.eventId], set: { objectKey } })
     .returning();
   return { media_id: row.id, event_id: eventId };
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Stream a stored file to a user who may see its feeder (owner or admin); MinIO itself is never exposed. */
-export async function mediaResponse(user: AuthUser, mediaId: string) {
+/**
+ * A stored file for a user who may see its feeder (owner or admin), as a stream; MinIO itself is never exposed.
+ * Any id that names no file, malformed or not, is a 404.
+ */
+export async function openMedia(user: AuthUser, mediaId: string) {
   const notFound = new ApiError(404, "not_found", `Media ${mediaId} not found`);
-  if (!UUID.test(mediaId)) throw notFound;
+  if (!UUID_PATTERN.test(mediaId)) throw notFound;
   const [row] = await db.select().from(media).where(eq(media.id, mediaId));
   if (!row) throw notFound;
   await requireFeeder(user, row.feederId);
   const body = Readable.toWeb(await getObject(row.objectKey)) as ReadableStream;
-  return new Response(body, { headers: { "content-type": row.contentType, "cache-control": "private, max-age=86400" } });
+  return { body, contentType: row.contentType };
 }

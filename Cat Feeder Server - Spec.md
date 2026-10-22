@@ -311,7 +311,7 @@ Nine tables. Media files stay in MinIO; PostgreSQL keeps only the object key (Pa
 | `cats` | `id` PK, `owner_id` FK, `name`, `rfid_tag` UNIQUE | Required now: cat ID is by RFID (Review) |
 | `device_status` | `feeder_id` PK, `state`, `last_seen`, `fw`, `applied_schedule_version` | Updated from the `status` topic |
 | `schedules` | PK (`feeder_id`, `schedule_id`), `time`, `timezone` (always `Asia/Bangkok`), `portion_g`, `sound_id`, `enabled` | Whole set is published on every change |
-| `commands` | `command_id` PK, `feeder_id`, `portion_g`, `issued_by`, `issued_at`, `done_event_id` | Links a manual feed to its event |
+| `commands` | `command_id` PK, `feeder_id`, `portion_g`, `sound_id` NULL, `issued_by`, `issued_at`, `done_event_id` | Links a manual feed to its event |
 | `feeding_events` | `event_id` PK, `feeder_id`, `trigger`, `schedule_id`, `command_id`, `scheduled_at`, `occurred_at`, `received_at` DEFAULT `now()`, `target_portion_g`, `bowl_before_g`, `bowl_after_g`, `rfid_result`, `rfid_tag`, `result`, `raw` JSONB | PK on `event_id` = duplicate protection. Cat name = join `cats` on `rfid_tag` |
 | `media` | `id` PK, `feeder_id`, `kind` (image/sound), `object_key`, `event_id` NULL, `sound_id` NULL, `content_type`, `created_at` DEFAULT `now()` | Image joins its event by `event_id` |
 | `duplicate_events` | `id` PK, `event_id`, `feeder_id`, `received_at` DEFAULT `now()` | One row per rejected duplicate; the count is the objective 4 result |

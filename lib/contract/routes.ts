@@ -146,7 +146,7 @@ registry.registerPath({
   tags: ["Commands"],
   summary: "Feed now",
   description:
-    "Returns 202: the command was sent, not done. Poll GET /feeders/{id}/commands/{command_id} until status is `done`. If the feeder is offline the command is dropped after 60 s.",
+    "Returns 202: the command was sent, not done. Poll GET /feeders/{id}/commands/{command_id} until status is `done`. The server never expires a command: a feeder that was offline ignores it once it is over 60 s old (spec rule 9), so it stays `sent`. Give up after about 60 s.",
   security: asUser,
   request: { params: feederParams, body: { content: { "application/json": { schema: S.FeedCommandRequest } } } },
   responses: { 202: json(S.FeedCommand, "Sent to the feeder"), ...E401, ...E403, ...E404, ...E422 },
@@ -253,7 +253,11 @@ registry.registerPath({
   tags: ["Sounds"],
   summary: "Download an image or sound",
   security: asUser,
-  request: { params: z.object({ media_id: z.string().uuid() }) },
+  request: {
+    params: z.object({
+      media_id: z.string().openapi({ format: "uuid", description: "Any id that names no file, malformed or not, is 404" }),
+    }),
+  },
   responses: {
     200: {
       description: "The file",

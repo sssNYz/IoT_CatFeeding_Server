@@ -56,8 +56,8 @@ export async function requireAdmin(req: Request): Promise<AuthUser> {
 // Device tokens are long random strings, so a plain SHA-256 is enough; only the hash is stored (spec Section 8).
 export const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
 
-/** A device route's caller must hold this feeder's device token (`Authorization: Bearer <token>`), or a 401. */
-export async function requireDevice(req: Request, feederId: string) {
+/** A device route's caller (the feeder's ESP32 boards) must hold this feeder's device token (`Authorization: Bearer <token>`), or a 401. */
+export async function requireFeederToken(req: Request, feederId: string) {
   const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
   if (!token) throw unauthorized("Device token missing");
   const [feeder] = await db
