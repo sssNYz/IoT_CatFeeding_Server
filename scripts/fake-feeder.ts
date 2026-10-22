@@ -1,7 +1,8 @@
-// Plays a feeder over MQTT so the owner app sees a live feeder without hardware (tickets 04, 05).
+// Plays a feeder over MQTT so the owner app sees a live feeder without hardware (tickets 04–06).
 // Speaks exactly the spec Section 5 payloads, so the ESP32 firmware can copy this behaviour.
 //   npm run fake-feeder              # feeder01 against the local stack
-//   Feeds by itself at each enabled schedule time (Thai time). While it runs, press:
+//   Feeds by itself at each enabled schedule time (Thai time) and on "Feed now" commands under 60 s old.
+//   While it runs, press:
 //     f = button feed now   o = outage: send 5 late events from the last hour   d = resend the last event (duplicate)
 //   Ctrl+C = clean shutdown (says offline); kill -9 <pid it prints> = power cut (the broker sends the Last Will)
 // Runs as one process (node --import tsx, not the tsx CLI, which runs the script in a child process),
@@ -22,6 +23,7 @@ const password = process.env[passwordVar];
 if (!password) throw new Error(`${passwordVar} is not set (see .env.example)`);
 
 const FW = "0.3.0-fake";
+const MAX_COMMAND_AGE_S = 60;
 const topic = (kind: string) => `catfeeder/${id}/${kind}`;
 const OFFLINE = JSON.stringify({ state: "offline" });
 let applied: number | undefined;
@@ -60,7 +62,13 @@ client.on("message", (t, payload) => {
     console.log(`${id}: applied schedule v${applied}: ${list.join(", ") || "none"}`);
     reportStatus();
   } else if (t === topic("command/feed")) {
-    console.log(`${id}: got feed command ${msg.command_id} (${msg.portion_g} g); feeding comes with ticket 06`);
+    // Rule 9: a QoS 1 command can sit in the broker while the feeder is away; never act on an old tap.
+    const age = (Date.now() - Date.parse(msg.issued_at)) / 1000;
+    if (!(age <= MAX_COMMAND_AGE_S)) {
+      console.log(`${id}: ignored feed command ${msg.command_id}: issued ${Math.round(age)} s ago`);
+      return;
+    }
+    sendEvent(feedingEvent("remote", msg.portion_g, { command_id: msg.command_id, occurred_at: nowTh() }));
   }
 });
 

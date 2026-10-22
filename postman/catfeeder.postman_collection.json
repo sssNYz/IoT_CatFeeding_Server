@@ -62,6 +62,10 @@
     {
       "key": "sinceEncoded",
       "value": ""
+    },
+    {
+      "key": "commandId",
+      "value": ""
     }
   ],
   "item": [
@@ -521,6 +525,93 @@
                   "key": "since",
                   "value": "{{sinceEncoded}}"
                 }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feed now",
+      "item": [
+        {
+          "name": "Feed now",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 202\", () => pm.response.to.have.status(202));",
+                  "const cmd = pm.response.json();",
+                  "pm.test(\"sent, not done yet\", () => pm.expect(cmd.status).to.eql(\"sent\"));",
+                  "pm.test(\"Thai-time issued_at\", () => pm.expect(cmd.issued_at).to.match(/\\+07:00$/));",
+                  "pm.collectionVariables.set(\"commandId\", cmd.command_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/commands/feed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "commands",
+                "feed"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"portion_g\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Check the feed (done once the feeder reports)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "// \"done\" only with npm run fake-feeder (or a real feeder) running; otherwise it stays \"sent\".",
+                  "const cmd = pm.response.json();",
+                  "pm.test(\"sent or done\", () => pm.expect([\"sent\", \"done\"]).to.include(cmd.status));",
+                  "pm.test(\"done has its event_id\", () => pm.expect(cmd.status === \"done\").to.eql(cmd.event_id !== null));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/commands/{{commandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "commands",
+                "{{commandId}}"
               ]
             }
           }
@@ -1031,6 +1122,51 @@
                 "admin",
                 "stats"
               ]
+            }
+          }
+        },
+        {
+          "name": "Feed portion too big → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"names the portion_g field\", () => pm.expect(pm.response.json().error.details[0].field).to.eql(\"portion_g\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeders/feeder01/commands/feed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeders",
+                "feeder01",
+                "commands",
+                "feed"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"portion_g\": 101\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }

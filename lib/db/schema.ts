@@ -99,3 +99,18 @@ export const duplicateEvents = pgTable("duplicate_events", {
     .references(() => feeders.id, { onDelete: "cascade" }),
   receivedAt: thaiTime("received_at").notNull().defaultNow(),
 });
+
+// One manual feed from the owner app. done_event_id is filled when the feeding event with this command_id arrives.
+export const commands = pgTable("commands", {
+  commandId: text("command_id").primaryKey(),
+  feederId: text("feeder_id")
+    .notNull()
+    .references(() => feeders.id, { onDelete: "cascade" }),
+  portionG: integer("portion_g").notNull(),
+  soundId: text("sound_id"),
+  issuedBy: uuid("issued_by")
+    .notNull()
+    .references(() => users.id),
+  issuedAt: thaiTime("issued_at").notNull(),
+  doneEventId: text("done_event_id"),
+});

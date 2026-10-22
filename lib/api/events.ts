@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, gte, lt } from "drizzle-orm";
+import { and, count, desc, eq, gt, gte, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import type { AdminStats, EventsQuery, FeedingEvent } from "../contract/schemas";
 import { FeedResult, RfidResult, ThaiDateTime, Trigger } from "../contract/schemas";
@@ -55,7 +55,23 @@ export async function ingestEvent(feederId: string, message: unknown) {
     })
     .onConflictDoNothing({ target: feedingEvents.eventId })
     .returning({ id: feedingEvents.eventId });
-  if (inserted.length === 0) await db.insert(schema.duplicateEvents).values({ eventId: e.event_id, feederId });
+  if (inserted.length === 0) {
+    await db.insert(schema.duplicateEvents).values({ eventId: e.event_id, feederId });
+    return;
+  }
+  // A feeding for a "Feed now" marks that command done (rule 3). The first event for a command wins.
+  if (e.command_id) {
+    await db
+      .update(schema.commands)
+      .set({ doneEventId: e.event_id })
+      .where(
+        and(
+          eq(schema.commands.commandId, e.command_id),
+          eq(schema.commands.feederId, feederId),
+          isNull(schema.commands.doneEventId),
+        ),
+      );
+  }
 }
 
 type CatRef = { id: string; name: string } | null;

@@ -43,6 +43,13 @@
       "when": 1792685214671,
       "tag": "0005_received_at_millis",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792685830575,
+      "tag": "0006_commands",
+      "breakpoints": true
     }
   ]
 }
