@@ -426,4 +426,4 @@ None of these block the 26 Oct server core.
 - [x] ~~Does Proxmox count as "cloud"?~~ Moot: the VPS is the cloud.
 - [x] **Pairing flow:** admin pairs in the admin dashboard; secrets go into `secrets.h` and are flashed (Section 8).
 - [x] **Who builds what?** Sunny: server (Next.js API, MQTT bridge, admin dashboard, Docker, VPS). Pisit: owner app. Both: hardware. Every member must speak in the video and answer questions.
-- [ ] **Who writes the paper and the analysis notebook?**
+- [x] **Who writes the paper and the analysis notebook?** A loose split by area, not strict: Sunny leads platform layer, benchmarks and the analysis notebook; Pisit leads the application layer; both write edge layer, test results, discussion and conclusion.
