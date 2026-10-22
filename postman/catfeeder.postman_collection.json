@@ -38,6 +38,10 @@
     {
       "key": "scheduleVersion",
       "value": ""
+    },
+    {
+      "key": "rfidTag",
+      "value": ""
     }
   ],
   "item": [
@@ -336,6 +340,91 @@
       ]
     },
     {
+      "name": "Cats",
+      "item": [
+        {
+          "name": "My cats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"has the seeded cats\", () => pm.expect(pm.response.json().cats.map((c) => c.rfid_tag)).to.include.members([\"E200001A\", \"E200001B\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cats"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add a cat",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A fresh tag each run, since tags are unique and cats cannot be deleted.",
+                  "pm.collectionVariables.set(\"rfidTag\", Math.floor(Math.random() * 0xffffffff).toString(16).toUpperCase().padStart(8, \"0\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"saved the tag\", () => pm.expect(pm.response.json().rfid_tag).to.eql(pm.collectionVariables.get(\"rfidTag\")));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cats"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kuro\",\n  \"rfid_tag\": \"{{rfidTag}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Errors",
       "item": [
         {
@@ -601,6 +690,90 @@
                 "feeder99",
                 "schedules"
               ]
+            }
+          }
+        },
+        {
+          "name": "Tag already registered → 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"code conflict\", () => pm.expect(pm.response.json().error.code).to.eql(\"conflict\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cats"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Copycat\",\n  \"rfid_tag\": \"E200001A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Bad RFID tag → 422",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"names the rfid_tag field\", () => pm.expect(pm.response.json().error.details[0].field).to.eql(\"rfid_tag\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cats"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kuro\",\n  \"rfid_tag\": \"not-hex\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }

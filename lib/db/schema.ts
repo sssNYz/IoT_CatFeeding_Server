@@ -50,3 +50,13 @@ export const schedules = pgTable(
   },
   (t) => [primaryKey({ columns: [t.feederId, t.scheduleId] })],
 );
+
+// An owner's cat. A tag read at the bowl only means "likely visitor" (shared bowl), never a certain ID.
+export const cats = pgTable("cats", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  rfidTag: text("rfid_tag").notNull().unique(),
+});

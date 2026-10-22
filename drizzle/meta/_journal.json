@@ -15,6 +15,13 @@
       "when": 1792679820147,
       "tag": "0001_schedules",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792683121820,
+      "tag": "0002_cats",
+      "breakpoints": true
     }
   ]
 }
