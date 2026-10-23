@@ -8,7 +8,7 @@ You are connecting the **owner app** (mobile) to the Cat Feeder server. The full
 | --- | --- |
 | Mock server (now) | `http://<computer-ip>:4010` (run `npm install && npm run mock` in the server repo) |
 | Real server, local | `http://<laptop-ip>:3000/api/v1` |
-| Real server, VPS | `https://<duckdns-name>/api/v1` (name not final) |
+| Real server, VPS | `https://catfeeder-g05.duckdns.org/api/v1` |
 
 Keep the base URL in one config value. The mock has no `/api/v1` prefix; the real server does.
 

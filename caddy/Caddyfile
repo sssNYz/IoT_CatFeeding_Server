@@ -1,0 +1,6 @@
+# HTTPS for the owner app, the admin dashboard and the ESP32-CAM (spec Section 4).
+# Caddy gets and renews a Let's Encrypt certificate for PUBLIC_HOST by itself; port 80 answers the challenge
+# and redirects everything else to HTTPS.
+{$PUBLIC_HOST} {
+	reverse_proxy app:3000
+}

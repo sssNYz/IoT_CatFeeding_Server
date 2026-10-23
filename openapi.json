@@ -12,7 +12,7 @@
     },
     {
       "url": "https://catfeeder-g05.duckdns.org/api/v1",
-      "description": "VPS (hostname not final)"
+      "description": "VPS"
     }
   ],
   "components": {

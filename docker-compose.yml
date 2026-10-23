@@ -1,5 +1,5 @@
 # Every service runs on Thai time (spec Section 2). db and minio have no `ports:`: they stay private.
-# mosquitto 1883 is bound to localhost only.
+# Only Caddy's 80/443 and Mosquitto's 8883 (TLS) are open to the Internet; 3000 and 1883 are bound to localhost.
 x-thai-time: &thai-time
   TZ: Asia/Bangkok
 
@@ -12,8 +12,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       MQTT_URL: mqtt://mosquitto:1883
       MINIO_URL: http://minio:9000
+    # The Internet reaches the app through Caddy only; 3000 is for tests on this machine.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       db:
         condition: service_healthy
@@ -53,19 +54,23 @@ services:
         mosquitto_passwd -c -b /mosquitto/passwd backend "$$MQTT_BACKEND_PASSWORD"
         mosquitto_passwd -b /mosquitto/passwd feeder01 "$$FEEDER01_MQTT_PASSWORD"
         cp /mosquitto/config/acl /mosquitto/acl
-        chown mosquitto:mosquitto /mosquitto/passwd /mosquitto/acl
-        chmod 0600 /mosquitto/passwd /mosquitto/acl
+        mkdir -p /mosquitto/certs
+        cp /mosquitto/config/certs/mosquitto.crt /mosquitto/config/certs/mosquitto.key /mosquitto/certs/
+        chown mosquitto:mosquitto /mosquitto/passwd /mosquitto/acl /mosquitto/certs/*
+        chmod 0600 /mosquitto/passwd /mosquitto/acl /mosquitto/certs/mosquitto.key
         exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf
     environment:
       <<: *thai-time
       MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD}
       FEEDER01_MQTT_PASSWORD: ${FEEDER01_MQTT_PASSWORD}
-    # Localhost only, for tests and debugging on this machine; feeders get 8883 with TLS (ticket 04).
+    # 1883 is for this machine only (tests, the fake feeder); feeders use 8883 with TLS.
     ports:
       - "127.0.0.1:1883:1883"
+      - "8883:8883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - ./mosquitto/config/acl:/mosquitto/config/acl:ro
+      - ./certs:/mosquitto/config/certs:ro
       - mosquittodata:/mosquitto/data
     restart: unless-stopped
 
@@ -81,7 +86,25 @@ services:
       - miniodata:/data
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2
+    environment:
+      <<: *thai-time
+      PUBLIC_HOST: ${PUBLIC_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
 volumes:
+  caddydata:
+  caddyconfig:
   pgdata:
   mosquittodata:
   miniodata:

@@ -78,8 +78,9 @@ export async function eventually<T>(get: () => Promise<T>, done: (value: T) => b
 }
 
 /** Play feeder01 over MQTT with its own login and a Last Will, as the real board does (spec Section 5). */
-export function connectFeeder(opts: { keepalive?: number } = {}) {
-  return mqtt.connectAsync(process.env.MQTT_TEST_URL ?? "mqtt://localhost:1883", {
+export function connectFeeder(opts: { keepalive?: number; url?: string; ca?: Buffer } = {}) {
+  return mqtt.connectAsync(opts.url ?? process.env.MQTT_TEST_URL ?? "mqtt://localhost:1883", {
+    ...(opts.ca && { ca: opts.ca }),
     username: "feeder01",
     password: env("FEEDER01_MQTT_PASSWORD"),
     keepalive: opts.keepalive ?? 60,

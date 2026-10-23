@@ -13,7 +13,7 @@ const doc = new OpenApiGeneratorV31(registry.definitions).generateDocument({
   },
   servers: [
     { url: "http://localhost:3000/api/v1", description: "Local development" },
-    { url: "https://catfeeder-g05.duckdns.org/api/v1", description: "VPS (hostname not final)" },
+    { url: "https://catfeeder-g05.duckdns.org/api/v1", description: "VPS" },
   ],
 });
 
