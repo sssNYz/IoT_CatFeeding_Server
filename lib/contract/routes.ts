@@ -320,10 +320,7 @@ registry.registerPath({
   summary: "All feeding events, with raw payload",
   security: asUser,
   request: {
-    query: S.EventsQuery.extend({
-      feeder: S.FeederId.optional(),
-      result: S.FeedResult.optional(),
-    }),
+    query: S.AdminEventsQuery,
   },
   responses: { 200: json(z.object({ events: z.array(S.AdminEvent) }), "Events"), ...E401, ...E403, ...E422 },
 });

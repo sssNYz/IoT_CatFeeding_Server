@@ -306,6 +306,11 @@ export const AdminStats = z
   })
   .openapi("AdminStats");
 
+export const AdminEventsQuery = EventsQuery.extend({
+  feeder: FeederId.optional(),
+  result: FeedResult.optional(),
+});
+
 export const AdminEvent = FeedingEvent.extend({
   raw: z.record(z.string(), z.unknown()).openapi({ description: "The exact MQTT payload the feeder sent" }),
 }).openapi("AdminEvent");
