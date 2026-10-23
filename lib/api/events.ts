@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, gte, isNull, lt } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, isNull, lt } from "drizzle-orm";
 import { z } from "zod";
 import type { AdminStats, EventsQuery, FeedingEvent } from "../contract/schemas";
 import { FeedResult, RfidResult, ThaiDateTime, Trigger } from "../contract/schemas";
@@ -107,9 +107,46 @@ const subtract = (a: number, b: number) => Math.round((a - b) * 1000) / 1000;
  */
 export async function listEvents(user: AuthUser, feederId: string, query: z.infer<typeof EventsQuery>) {
   await requireFeeder(user, feederId);
+  return selectEvents(feederId, query, "newest", query.limit ?? 50);
+}
+
+// The paper's analysis notebook reads these columns (spec Section 10); values are the same as in the history.
+const CSV_COLUMNS = [
+  "event_id", "feeder_id", "trigger", "schedule_id", "command_id", "scheduled_at", "occurred_at", "received_at",
+  "target_portion_g", "bowl_before_g", "bowl_after_g", "dispensed_g", "rfid_result", "rfid_tag", "cat_name", "result",
+  "image_media_id",
+] as const;
+
+/** Every feeding of one feeder as CSV, oldest occurred_at first, optionally within from/to (admin only). */
+export async function exportEventsCsv(user: AuthUser, feederId: string, query: Pick<z.infer<typeof EventsQuery>, "from" | "to">) {
+  await requireFeeder(user, feederId);
+  const lines = (await selectEvents(feederId, query, "oldest")).map((e) => {
+    const row: Record<(typeof CSV_COLUMNS)[number], string | number | null> = {
+      ...e,
+      rfid_result: e.rfid.result,
+      rfid_tag: e.rfid.tag_id,
+      cat_name: e.rfid.cat?.name ?? null,
+    };
+    return CSV_COLUMNS.map((c) => csvField(row[c])).join(",");
+  });
+  return [CSV_COLUMNS.join(","), ...lines].join("\r\n") + "\r\n";
+}
+
+// RFC 4180: quote a field holding a comma, quote or line break (a cat's name could), doubling inner quotes.
+const csvField = (value: string | number | null) => {
+  const text = value === null ? "" : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+};
+
+async function selectEvents(
+  feederId: string,
+  query: Pick<z.infer<typeof EventsQuery>, "from" | "to" | "since">,
+  order: "newest" | "oldest",
+  limit?: number,
+) {
   // The cat's name and the photo are both joined at read time: a cat registered after its visits still shows
   // up, and a photo links to its event by event_id whichever arrived first (ADR 0001).
-  const rows = await db
+  const select = db
     .select({ event: feedingEvents, cat: { id: cats.id, name: cats.name }, imageId: media.id })
     .from(feedingEvents)
     .leftJoin(cats, eq(cats.rfidTag, feedingEvents.rfidTag))
@@ -125,8 +162,13 @@ export async function listEvents(user: AuthUser, feederId: string, query: z.infe
         query.since === undefined ? undefined : gt(feedingEvents.receivedAt, query.since),
       ),
     )
-    .orderBy(desc(feedingEvents.occurredAt), desc(feedingEvents.eventId))
-    .limit(query.limit ?? 50);
+    .orderBy(
+      ...(order === "newest"
+        ? [desc(feedingEvents.occurredAt), desc(feedingEvents.eventId)]
+        : [asc(feedingEvents.occurredAt), asc(feedingEvents.eventId)]),
+    )
+    .$dynamic();
+  const rows = await (limit === undefined ? select : select.limit(limit));
   return rows.map((r) => toEvent(r.event, r.cat, r.imageId));
 }
 
