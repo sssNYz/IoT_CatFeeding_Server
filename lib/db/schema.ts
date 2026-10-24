@@ -130,8 +130,14 @@ export const media = pgTable(
     objectKey: text("object_key").notNull(),
     eventId: text("event_id"),
     soundId: text("sound_id"),
+    // Sounds only: the owner's label and the length of the converted MP3.
+    name: text("name"),
+    durationS: numeric("duration_s", { precision: 6, scale: 2, mode: "number" }),
     contentType: text("content_type").notNull(),
     createdAt: thaiTime("created_at").notNull().defaultNow(),
   },
-  (t) => [unique("media_feeder_event_unique").on(t.feederId, t.eventId)],
+  (t) => [
+    unique("media_feeder_event_unique").on(t.feederId, t.eventId),
+    unique("media_feeder_sound_unique").on(t.feederId, t.soundId),
+  ],
 );

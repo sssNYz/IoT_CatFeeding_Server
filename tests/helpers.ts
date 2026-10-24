@@ -99,6 +99,48 @@ export function makeJpeg(rgb: [number, number, number] = [200, 120, 60], size = 
   return Buffer.from(jpeg.encode({ data, width: size, height: size }, 80).data);
 }
 
+/** A real WAV recording: a 440 Hz tone, 44.1 kHz stereo 16-bit, like a phone's raw recording. */
+export function makeWav(seconds = 2, rate = 44_100, channels = 2) {
+  const samples = Math.round(seconds * rate);
+  const data = Buffer.alloc(samples * channels * 2);
+  for (let i = 0; i < samples; i++) {
+    const v = Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 12_000);
+    for (let c = 0; c < channels; c++) data.writeInt16LE(v, (i * channels + c) * 2);
+  }
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write("WAVEfmt ", 8);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20); // PCM
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(rate, 24);
+  header.writeUInt32LE(rate * channels * 2, 28);
+  header.writeUInt16LE(channels * 2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+
+/** POST /feeders/{id}/sounds as multipart form data, the way the owner app uploads a recording. */
+export async function uploadSound(
+  feederId: string,
+  opts: { token: string; name?: string; file?: Buffer; type?: string; filename?: string },
+) {
+  const form = new FormData();
+  if (opts.name !== undefined) form.set("name", opts.name);
+  if (opts.file) {
+    form.set("file", new Blob([new Uint8Array(opts.file)], { type: opts.type ?? "audio/wav" }), opts.filename ?? "call.wav");
+  }
+  const res = await fetch(`${BASE}/feeders/${feederId}/sounds`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${opts.token}` },
+    body: form,
+  });
+  return { status: res.status, body: (await res.json()) as unknown };
+}
+
 /** POST /devices/{id}/images as multipart form data, the way the camera uploads. */
 export async function uploadImage(
   feederId: string,

@@ -57,6 +57,13 @@
       "when": 1792686484772,
       "tag": "0007_media",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792817718357,
+      "tag": "0008_sounds",
+      "breakpoints": true
     }
   ]
 }
