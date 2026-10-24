@@ -4,11 +4,11 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Signing in as admin opens the overview; an owner login is refused with a clear message; signing out works
-- [ ] A feeder that comes online / goes offline (Last Will) changes its card within about 10 s, without a reload
-- [ ] A new event raises "events stored" without a reload; a resent event raises "duplicates rejected"
-- [ ] Every time shown is Thai time
+- [x] Signing in as admin opens the overview; an owner login is refused with a clear message; signing out works
+- [x] A feeder that comes online / goes offline (Last Will) changes its card within about 10 s, without a reload
+- [x] A new event raises "events stored" without a reload; a resent event raises "duplicates rejected"
+- [x] Every time shown is Thai time
 
 Seam: a real browser (Playwright, headless on the VPS) drives the page while the test plays feeder01 over MQTT.

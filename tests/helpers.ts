@@ -111,3 +111,11 @@ export async function uploadImage(
   });
   return { status: res.status, body: (await res.json()) as unknown };
 }
+
+/** A real headless Chromium, the way the admin opens the dashboard (`npx playwright install --only-shell chromium`). */
+export async function openBrowser() {
+  const { chromium } = await import("playwright");
+  return chromium.launch();
+}
+
+export const DASHBOARD = process.env.DASHBOARD_URL ?? `https://${process.env.PUBLIC_HOST}/admin`;

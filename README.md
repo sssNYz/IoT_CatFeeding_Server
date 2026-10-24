@@ -10,13 +10,14 @@ sh scripts/make-mqtt-certs.sh   # our CA + Mosquitto's certificate in certs/ (ke
 docker compose up -d --build
 ```
 
-The API is at `https://<PUBLIC_HOST>/api/v1` through Caddy, which gets a Let's Encrypt certificate by itself (ports 80 and 443 must be reachable), and at `http://localhost:3000/api/v1` on this machine (contract: `openapi.json`). On first start the app migrates the database and seeds the accounts from `.env`: one admin, and one owner who owns `feeder01`.
+The admin dashboard is at `https://<PUBLIC_HOST>/admin` (admin login only). The API is at `https://<PUBLIC_HOST>/api/v1` through Caddy, which gets a Let's Encrypt certificate by itself (ports 80 and 443 must be reachable), and at `http://localhost:3000/api/v1` on this machine (contract: `openapi.json`). On first start the app migrates the database and seeds the accounts from `.env`: one admin, and one owner who owns `feeder01`.
 
 | Task | Command |
 | --- | --- |
 | Wipe and reseed the database | `docker compose exec app npm run reset` |
 | Seed (only if empty) | `docker compose exec app npm run seed` |
 | Run the API tests (stack must be up) | `npm install && npm test` |
+| One-time: the headless Chromium the dashboard tests drive | `npx playwright install --only-shell chromium && sudo npx playwright install-deps chromium` |
 | Type check | `npm run typecheck` |
 | Mock server for the app (port 4010) | `npm run mock` |
 | Regenerate `openapi.json` | `npm run openapi` |
