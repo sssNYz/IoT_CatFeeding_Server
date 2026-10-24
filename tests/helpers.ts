@@ -1,8 +1,11 @@
+import { randomBytes } from "node:crypto";
+import type { Browser, Page } from "playwright";
 import type { ZodType, z } from "zod";
 import jpeg from "jpeg-js";
 import mqtt from "mqtt";
 import { expect } from "vitest";
 import { ErrorResponse } from "../lib/contract/schemas";
+import { nowTh } from "../lib/time";
 
 try {
   process.loadEnvFile(".env");
@@ -119,3 +122,35 @@ export async function openBrowser() {
 }
 
 export const DASHBOARD = process.env.DASHBOARD_URL ?? `https://${process.env.PUBLIC_HOST}/admin`;
+
+/** A fresh browser tab, on UTC like a laptop abroad, so only the server's +07:00 can make the times Thai. */
+export async function newPage(browser: Browser) {
+  const context = await browser.newContext({ timezoneId: "UTC", acceptDownloads: true });
+  return context.newPage();
+}
+
+/** Open a dashboard page (`path` under /admin) and sign in through its form. */
+export async function signIn(page: Page, who: "ADMIN" | "OWNER", path = "") {
+  await page.goto(DASHBOARD + path);
+  await page.getByLabel("Email").fill(env(`SEED_${who}_EMAIL`));
+  await page.getByLabel("Password").fill(env(`SEED_${who}_PASSWORD`));
+  await page.getByRole("button", { name: "Sign in" }).click();
+}
+
+/** A feeding event payload from feeder01, as the main ESP32 publishes it (spec Section 5). */
+export function feedingEvent(fields: Record<string, unknown> = {}) {
+  return {
+    event_id: `feeder01-ui-${randomBytes(4).toString("hex")}`,
+    device_id: "feeder01",
+    trigger: "button",
+    occurred_at: nowTh(),
+    target_portion_g: 20,
+    bowl_before_g: 2,
+    bowl_after_g: 21.5,
+    rfid: { result: "unknown", tag_id: null },
+    image_expected: false,
+    result: "ok",
+    device: { rssi: -58, fw: "0.3.0", queue_len: 0 },
+    ...fields,
+  };
+}

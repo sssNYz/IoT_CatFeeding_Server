@@ -1,9 +1,8 @@
-import { randomBytes } from "node:crypto";
 import type { MqttClient } from "mqtt";
 import type { Browser, Page } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AdminStats, FeederStatus } from "../lib/contract/schemas";
-import { DASHBOARD, call, connectFeeder, env, eventually, login, openBrowser, shaped } from "./helpers";
+import { call, connectFeeder, eventually, feedingEvent, login, newPage, openBrowser, shaped, signIn } from "./helpers";
 
 const STATUS_TOPIC = "catfeeder/feeder01/status";
 
@@ -36,22 +35,9 @@ async function stats() {
 const tile = async (page: Page, name: string) =>
   Number(await page.getByRole("region", { name }).getByRole("definition").textContent());
 
-/** A fresh browser tab, on UTC like a laptop abroad, so only the server's +07:00 can make the times Thai. */
-async function newPage() {
-  const context = await browser.newContext({ timezoneId: "UTC" });
-  return context.newPage();
-}
-
-async function signIn(page: Page, who: "ADMIN" | "OWNER") {
-  await page.goto(DASHBOARD);
-  await page.getByLabel("Email").fill(env(`SEED_${who}_EMAIL`));
-  await page.getByLabel("Password").fill(env(`SEED_${who}_PASSWORD`));
-  await page.getByRole("button", { name: "Sign in" }).click();
-}
-
 describe("dashboard overview", () => {
   it("shows the admin a card for each feeder after signing in", async () => {
-    const page = await newPage();
+    const page = await newPage(browser);
     await signIn(page, "ADMIN");
     const card = page.getByRole("article", { name: "Kitchen feeder" });
     await card.waitFor({ timeout: 10_000 });
@@ -60,7 +46,7 @@ describe("dashboard overview", () => {
   });
 
   it("turns an owner away with a clear message", async () => {
-    const page = await newPage();
+    const page = await newPage(browser);
     await signIn(page, "OWNER");
     // Next.js keeps an empty route announcer with role=alert on every page, so look for ours by its words.
     await page.getByRole("alert").filter({ hasText: "admin" }).waitFor({ timeout: 10_000 });
@@ -69,7 +55,7 @@ describe("dashboard overview", () => {
 
   it("shows feeder01 going online, its firmware and a Thai last-seen time, without a reload", async () => {
     await feeder.publishAsync(STATUS_TOPIC, '{"state":"offline"}', { qos: 1, retain: true });
-    const page = await newPage();
+    const page = await newPage(browser);
     await signIn(page, "ADMIN");
     const card = page.getByRole("article", { name: "Kitchen feeder" });
     await card.getByText("offline").waitFor({ timeout: 10_000 });
@@ -85,7 +71,7 @@ describe("dashboard overview", () => {
   it("flips the card to offline after a power cut (Last Will), without a reload", async () => {
     const dropped = await connectFeeder({ keepalive: 1 });
     await dropped.publishAsync(STATUS_TOPIC, '{"state":"online","fw":"0.3.0"}', { qos: 1, retain: true });
-    const page = await newPage();
+    const page = await newPage(browser);
     await signIn(page, "ADMIN");
     const card = page.getByRole("article", { name: "Kitchen feeder" });
     await card.getByText("online", { exact: true }).waitFor({ timeout: 10_000 });
@@ -95,24 +81,12 @@ describe("dashboard overview", () => {
   }, 30_000);
 
   it("counts a new event and a resent one on the stats tiles, without a reload", async () => {
-    const page = await newPage();
+    const page = await newPage(browser);
     await signIn(page, "ADMIN");
     const before = await stats();
     await eventually(() => tile(page, "Events stored"), (n) => n === before.events_total);
 
-    const event = JSON.stringify({
-      event_id: `feeder01-dash-${randomBytes(4).toString("hex")}`,
-      device_id: "feeder01",
-      trigger: "button",
-      occurred_at: "2026-10-24T09:00:00+07:00",
-      target_portion_g: 20,
-      bowl_before_g: 2,
-      bowl_after_g: 21,
-      rfid: { result: "unknown", tag_id: null },
-      image_expected: false,
-      result: "ok",
-      device: { rssi: -58, fw: "0.3.0", queue_len: 0 },
-    });
+    const event = JSON.stringify(feedingEvent());
     await feeder.publishAsync("catfeeder/feeder01/event/feeding", event, { qos: 1 });
     const stored = await eventually(() => tile(page, "Events stored"), (n) => n > before.events_total, 10_000);
     expect(stored).toBe(before.events_total + 1);
@@ -128,7 +102,7 @@ describe("dashboard overview", () => {
   }, 30_000);
 
   it("stays signed in across a reload, and signing out returns to the sign-in form", async () => {
-    const page = await newPage();
+    const page = await newPage(browser);
     await signIn(page, "ADMIN");
     const card = page.getByRole("article", { name: "Kitchen feeder" });
     await card.waitFor({ timeout: 10_000 });
@@ -140,5 +114,15 @@ describe("dashboard overview", () => {
     await page.reload();
     await page.getByRole("button", { name: "Sign in" }).waitFor({ timeout: 5_000 });
     expect(await page.getByRole("article").count()).toBe(0);
+  }, 30_000);
+
+  it("sends the admin back to the sign-in form when the token has expired", async () => {
+    const page = await newPage(browser);
+    await signIn(page, "ADMIN");
+    await page.getByRole("article", { name: "Kitchen feeder" }).waitFor({ timeout: 10_000 });
+    // What sessionStorage holds after the token's expiry: a token the server no longer accepts.
+    await page.evaluate(() => sessionStorage.setItem("catfeeder-admin-token", "expired.token.value"));
+    await page.reload();
+    await page.getByRole("button", { name: "Sign in" }).waitFor({ timeout: 10_000 });
   }, 30_000);
 });
