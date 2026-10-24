@@ -4,11 +4,11 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A new event from feeder01 appears at the top within about 5 s, with the cat's name and dispensed grams
-- [ ] Filtering by result `jam` shows only jams
-- [ ] A row opens its raw JSON; the photo thumbnail loads when the event has one
-- [ ] "Download CSV" downloads the feeder's CSV
+- [x] A new event from feeder01 appears at the top within about 5 s, with the cat's name and dispensed grams
+- [x] Filtering by result `jam` shows only jams
+- [x] A row opens its raw JSON; the photo thumbnail loads when the event has one
+- [x] "Download CSV" downloads the feeder's CSV
 
 Seam: Playwright in a real browser, as in 02.
