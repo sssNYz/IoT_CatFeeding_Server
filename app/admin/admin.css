@@ -318,3 +318,8 @@ dialog::backdrop {
   align-items: center;
   flex-wrap: wrap;
 }
+
+.bad {
+  color: var(--bad);
+  font-weight: 600;
+}

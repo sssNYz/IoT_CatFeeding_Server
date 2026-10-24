@@ -4,10 +4,10 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Adding or editing a schedule publishes the new set; the page shows "Waiting for feeder…" until the feeder reports the new `schedule_version`, then "Synced"
-- [ ] "Feed now" shows "Done" once the feeder's `remote` event arrives
-- [ ] With no feeder online, "Feed now" ends with "Feeder did not respond"
+- [x] Adding or editing a schedule publishes the new set; the page shows "Waiting for feeder…" until the feeder reports the new `schedule_version`, then "Synced"
+- [x] "Feed now" shows "Done" once the feeder's `remote` event arrives
+- [x] With no feeder online, "Feed now" ends with "Feeder did not respond"
 
 Seam: Playwright in a real browser, as in 02.
